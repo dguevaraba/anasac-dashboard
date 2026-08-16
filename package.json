@@ -1,0 +1,32 @@
+{
+  "name": "anasac",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @anasac/web",
+    "dev:web": "npm run dev -w @anasac/web",
+    "dev:mobile": "npm run start -w @anasac/mobile",
+    "build": "npm run build -w @anasac/web",
+    "build:web": "npm run build -w @anasac/web",
+    "lint": "npm run lint -w @anasac/web",
+    "typecheck:shared": "npm run typecheck -w @anasac/shared"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "overrides": {
+    "expo-font": "14.0.12",
+    "babel-preset-expo": "~54.0.10",
+    "@anasac/mobile": {
+      "react": "19.1.0",
+      "react-dom": "19.1.0",
+      "react-native": "0.81.5",
+      "babel-preset-expo": "~54.0.10",
+      "expo-font": "14.0.12"
+    }
+  }
+}
