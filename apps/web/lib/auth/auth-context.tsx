@@ -10,6 +10,11 @@ import {
 } from "react";
 import { DEMO_PASSWORD, demoUsers } from "@/lib/mock/data";
 import { getPermissionsForRole, hasPermission } from "@/lib/auth/permissions";
+import {
+  readViewAsRole,
+  subscribeViewAsRole,
+  writeViewAsRole,
+} from "@/lib/auth/view-as-role";
 import type { Permission, Role, UserProfile } from "@/types";
 
 const SESSION_KEY = "anasac_mock_session";
@@ -18,11 +23,14 @@ const AUTH_EVENT = "anasac-auth-change";
 
 export interface AuthContextValue {
   user: UserProfile | null;
+  realRole: Role | null;
+  viewAsRole: Role | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   loginWithGoogle: (next?: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void | Promise<void>;
   switchRoleDemo: (role: Role) => void;
+  setViewAsRole: (role: Role | null) => void;
   can: (permission: Permission) => boolean;
   permissions: Permission[];
 }
@@ -78,8 +86,21 @@ function persistUser(user: UserProfile | null) {
 }
 
 export function MockAuthProvider({ children }: { children: ReactNode }) {
-  const user = useSyncExternalStore(subscribe, readSession, () => null);
+  const storedUser = useSyncExternalStore(subscribe, readSession, () => null);
+  const viewAsRole = useSyncExternalStore(
+    subscribeViewAsRole,
+    readViewAsRole,
+    () => null,
+  );
   const isLoading = false;
+  const realRole = storedUser?.role ?? null;
+  const effectiveRole =
+    realRole === "administrador" && viewAsRole && viewAsRole !== "administrador"
+      ? viewAsRole
+      : realRole;
+  const user = storedUser
+    ? { ...storedUser, role: effectiveRole ?? storedUser.role }
+    : null;
 
   const login = useCallback(async (email: string, password: string) => {
     await new Promise((r) => setTimeout(r, 400));
@@ -98,37 +119,64 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    writeViewAsRole(null);
     persistUser(null);
   }, []);
 
   const switchRoleDemo = useCallback((role: Role) => {
     const match = demoUsers.find((u) => u.role === role);
     if (!match) return;
+    writeViewAsRole(null);
     persistUser(match);
   }, []);
 
+  const setViewAsRole = useCallback(
+    (role: Role | null) => {
+      if (realRole !== "administrador") return;
+      writeViewAsRole(role);
+    },
+    [realRole],
+  );
+
   const permissions = useMemo(
-    () => (user ? getPermissionsForRole(user.role) : []),
-    [user],
+    () => (effectiveRole ? getPermissionsForRole(effectiveRole) : []),
+    [effectiveRole],
   );
 
   const can = useCallback(
-    (permission: Permission) => (user ? hasPermission(user.role, permission) : false),
-    [user],
+    (permission: Permission) =>
+      effectiveRole ? hasPermission(effectiveRole, permission) : false,
+    [effectiveRole],
   );
 
   const value = useMemo(
     () => ({
       user,
+      realRole,
+      viewAsRole: effectiveRole !== realRole ? viewAsRole : null,
       isLoading,
       login,
       loginWithGoogle,
       logout,
       switchRoleDemo,
+      setViewAsRole,
       can,
       permissions,
     }),
-    [user, isLoading, login, loginWithGoogle, logout, switchRoleDemo, can, permissions],
+    [
+      user,
+      realRole,
+      viewAsRole,
+      effectiveRole,
+      isLoading,
+      login,
+      loginWithGoogle,
+      logout,
+      switchRoleDemo,
+      setViewAsRole,
+      can,
+      permissions,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

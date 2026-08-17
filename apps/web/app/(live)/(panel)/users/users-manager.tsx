@@ -111,7 +111,7 @@ export function UsersManager({
     <div>
       <PageHeader
         title="Usuarios y roles"
-        description="Solo el administrador crea usuarios mediante un enlace de invitación. La persona entra con su Gmail."
+        description="Generá un enlace y enviaselo a la otra persona. No lo abras vos: si estás logueado, no se aplica a tu cuenta."
         actions={!canManage ? <Badge variant="muted">Solo lectura</Badge> : undefined}
       />
 
@@ -176,7 +176,7 @@ export function UsersManager({
             {createdUrl ? (
               <div className="mt-4 rounded-xl border border-[var(--anasac-border)] bg-[var(--anasac-mist)] p-3 text-sm">
                 <p className="font-semibold text-[var(--anasac-navy)]">
-                  Enlace listo. Enviáselo a la persona:
+                  Enlace listo. Enviáselo a la otra persona (no lo abras en este navegador):
                 </p>
                 <p className="mt-1 break-all font-mono text-xs">{createdUrl}</p>
                 <Button

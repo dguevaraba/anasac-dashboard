@@ -1,15 +1,24 @@
 "use client";
 
+import { useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useAppConfig } from "@/lib/app-config";
-import { ROLE_LABELS } from "@/lib/auth/permissions";
+import { ALL_ROLES, ROLE_LABELS, getPermissionsForRole } from "@/lib/auth/permissions";
+import type { Role } from "@/types";
 
 export default function SettingsPage() {
-  const { user, can } = useAuth();
+  const { user, can, realRole, viewAsRole, setViewAsRole } = useAuth();
   const { demo } = useAppConfig();
+  const isAdmin = realRole === "administrador";
+  const previewOn = Boolean(viewAsRole);
+  const [selectedRole, setSelectedRole] = useState<Role>(viewAsRole ?? "contador");
+  const activePreviewRole = viewAsRole ?? selectedRole;
+  const previewPermissions = getPermissionsForRole(activePreviewRole);
 
   return (
     <div>
@@ -23,6 +32,67 @@ export default function SettingsPage() {
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
+        {isAdmin ? (
+          <Card className="lg:col-span-2" bubbles bubblePreset="panel">
+            <CardHeader>
+              <CardTitle>Vista previa de rol</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium text-[var(--anasac-navy)]">
+                    Ver la app como otro rol
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Solo cambia menús y botones. Tu cuenta sigue siendo administrador y la base de datos no se modifica.
+                  </p>
+                </div>
+                <Switch
+                  label="Activar vista previa de rol"
+                  checked={previewOn}
+                  onCheckedChange={(checked) => {
+                    setViewAsRole(checked ? selectedRole : null);
+                  }}
+                />
+              </div>
+
+              <div className="max-w-xs space-y-1">
+                <label className="text-xs uppercase tracking-wide text-slate-400" htmlFor="view-as-role">
+                  Rol a simular
+                </label>
+                <Select
+                  id="view-as-role"
+                  value={activePreviewRole}
+                  onChange={(event) => {
+                    const role = event.target.value as Role;
+                    setSelectedRole(role);
+                    if (previewOn) setViewAsRole(role);
+                  }}
+                >
+                  {ALL_ROLES.filter((role) => role !== "administrador").map((role) => (
+                    <option key={role} value={role}>
+                      {ROLE_LABELS[role]}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              <div>
+                <p className="mb-2 text-xs uppercase tracking-wide text-slate-400">
+                  Accesos de {ROLE_LABELS[activePreviewRole]}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {previewPermissions.map((permission) => (
+                    <Badge key={permission} variant="default">
+                      {permission}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
+
         <Card bubbles bubblePreset="panel">
           <CardHeader>
             <CardTitle>Organización</CardTitle>
@@ -76,7 +146,8 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between gap-3">
               <span className="text-slate-500">Usuario activo</span>
               <span className="font-medium">
-                {user?.fullName} · {user ? ROLE_LABELS[user.role] : ""}
+                {user?.fullName} · {realRole ? ROLE_LABELS[realRole] : ""}
+                {viewAsRole ? ` (vista ${ROLE_LABELS[viewAsRole]})` : ""}
               </span>
             </div>
             <div className="flex items-center justify-between gap-3">
@@ -90,13 +161,33 @@ export default function SettingsPage() {
 
         <Card className="lg:col-span-2" bubbles bubblePreset="header">
           <CardHeader>
-            <CardTitle>Dominio e infraestructura</CardTitle>
+            <CardTitle>Contacto ANASAC</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm text-slate-600">
-            <p>
-              Esta aplicación vive en <strong>dashboard.anasaccr.com</strong>.
-              El sitio público <strong>anasaccr.com</strong> no se modifica.
-            </p>
+          <CardContent className="grid gap-3 text-sm sm:grid-cols-3">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-slate-400">Correo</p>
+              <a
+                href="mailto:info@anasaccr.com"
+                className="font-medium text-[var(--anasac-teal)] hover:underline"
+              >
+                info@anasaccr.com
+              </a>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-slate-400">Teléfono</p>
+              <a
+                href="tel:+50683706170"
+                className="font-medium text-[var(--anasac-navy)]"
+              >
+                +506 8370 6170
+              </a>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-slate-400">Sede</p>
+              <p className="font-medium text-[var(--anasac-navy)]">
+                Santa Cruz, Guanacaste
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>

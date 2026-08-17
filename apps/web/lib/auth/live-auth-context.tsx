@@ -1,20 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { AuthContext, type AuthContextValue } from "@/lib/auth/auth-context";
 import { fetchProfileById } from "@/lib/auth/profile";
 import { getPermissionsForRole, hasPermission } from "@/lib/auth/permissions";
+import {
+  readViewAsRole,
+  subscribeViewAsRole,
+  writeViewAsRole,
+} from "@/lib/auth/view-as-role";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { Permission, Role, UserProfile } from "@/types";
 
 export function LiveAuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const viewAsRole = useSyncExternalStore(
+    subscribeViewAsRole,
+    readViewAsRole,
+    () => null,
+  );
 
   const loadProfile = useCallback(async () => {
     if (!isSupabaseConfigured()) {
-      setUser(null);
+      setProfile(null);
       setIsLoading(false);
       return;
     }
@@ -25,22 +35,22 @@ export function LiveAuthProvider({ children }: { children: ReactNode }) {
     } = await supabase.auth.getUser();
 
     if (!authUser) {
-      setUser(null);
+      setProfile(null);
       setIsLoading(false);
       return;
     }
 
-    const profile = await fetchProfileById(supabase, authUser.id);
+    const nextProfile = await fetchProfileById(supabase, authUser.id);
     const onInvite = window.location.pathname.startsWith("/invitar");
 
-    if (!profile && !onInvite) {
+    if (!nextProfile && !onInvite) {
       await supabase.auth.signOut();
-      setUser(null);
+      setProfile(null);
       setIsLoading(false);
       return;
     }
 
-    setUser(profile);
+    setProfile(nextProfile);
     setIsLoading(false);
   }, []);
 
@@ -88,7 +98,7 @@ export function LiveAuthProvider({ children }: { children: ReactNode }) {
       await supabase.auth.signOut();
       return { ok: false, error: "Tu cuenta está inactiva." };
     }
-    setUser(profile);
+    setProfile(profile);
     return { ok: true };
   }, []);
 
@@ -113,39 +123,74 @@ export function LiveAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    writeViewAsRole(null);
     if (isSupabaseConfigured()) {
       const supabase = createBrowserSupabase();
       await supabase.auth.signOut();
     }
-    setUser(null);
+    setProfile(null);
   }, []);
 
   const switchRoleDemo = useCallback((_role: Role) => {
     // Solo aplica en /example
   }, []);
 
+  const realRole = profile?.role ?? null;
+  const effectiveRole =
+    realRole === "administrador" && viewAsRole && viewAsRole !== "administrador"
+      ? viewAsRole
+      : realRole;
+  const user = profile
+    ? { ...profile, role: effectiveRole ?? profile.role }
+    : null;
+
+  const setViewAsRole = useCallback(
+    (role: Role | null) => {
+      if (realRole !== "administrador") return;
+      writeViewAsRole(role);
+    },
+    [realRole],
+  );
+
   const permissions = useMemo(
-    () => (user ? getPermissionsForRole(user.role) : []),
-    [user],
+    () => (effectiveRole ? getPermissionsForRole(effectiveRole) : []),
+    [effectiveRole],
   );
 
   const can = useCallback(
-    (permission: Permission) => (user ? hasPermission(user.role, permission) : false),
-    [user],
+    (permission: Permission) =>
+      effectiveRole ? hasPermission(effectiveRole, permission) : false,
+    [effectiveRole],
   );
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
+      realRole,
+      viewAsRole: effectiveRole !== realRole ? viewAsRole : null,
       isLoading,
       login,
       loginWithGoogle,
       logout,
       switchRoleDemo,
+      setViewAsRole,
       can,
       permissions,
     }),
-    [user, isLoading, login, loginWithGoogle, logout, switchRoleDemo, can, permissions],
+    [
+      user,
+      realRole,
+      viewAsRole,
+      effectiveRole,
+      isLoading,
+      login,
+      loginWithGoogle,
+      logout,
+      switchRoleDemo,
+      setViewAsRole,
+      can,
+      permissions,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

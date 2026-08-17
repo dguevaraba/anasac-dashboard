@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
+import { RolePreviewBanner } from "@/components/layout/role-preview-banner";
+import { ShellSkeleton } from "@/components/layout/shell-skeleton";
 import { Topbar } from "@/components/layout/topbar";
 import { useAuth } from "@/lib/auth/auth-context";
 import { appHref, useAppConfig } from "@/lib/app-config";
@@ -20,13 +22,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   }, [isLoading, user, router, basePath]);
 
   if (isLoading || !user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--anasac-mist)]">
-        <div className="rounded-2xl border border-[var(--anasac-border)] bg-white px-6 py-4 text-sm text-slate-500 shadow-sm">
-          Cargando sesión...
-        </div>
-      </div>
-    );
+    return <ShellSkeleton />;
   }
 
   return (
@@ -43,6 +39,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <span className="absolute right-1/3 top-1/2 h-20 w-20 rounded-full bg-[var(--anasac-teal-soft)]/50" />
         </div>
         <Topbar onMenuClick={() => setSidebarOpen(true)} />
+        <RolePreviewBanner />
         <main className="relative z-[1] flex-1 px-4 py-6 md:px-6 lg:px-8">{children}</main>
       </div>
     </div>

@@ -2,6 +2,7 @@
 
 import { Bell, Menu } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useAppConfig } from "@/lib/app-config";
 import { notifications } from "@/lib/mock/data";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,9 +11,10 @@ import { UserMenu } from "@/components/layout/user-menu";
 import { formatDateTime } from "@/lib/utils";
 
 export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
+  const { demo } = useAppConfig();
   const [openNotif, setOpenNotif] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
-  const unread = notifications.filter((n) => !n.read).length;
+  const unread = demo ? notifications.filter((n) => !n.read).length : 0;
 
   useEffect(() => {
     function onPointerDown(event: PointerEvent) {
@@ -65,21 +67,27 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
               <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Notificaciones
               </p>
-              {notifications.map((n) => (
-                <div
-                  key={n.id}
-                  className="rounded-lg px-2 py-2 hover:bg-[var(--anasac-mist)]"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-medium text-[var(--anasac-navy)]">{n.title}</p>
-                    {!n.read ? <Badge variant="default">Nueva</Badge> : null}
+              {demo ? (
+                notifications.map((n) => (
+                  <div
+                    key={n.id}
+                    className="rounded-lg px-2 py-2 hover:bg-[var(--anasac-mist)]"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-medium text-[var(--anasac-navy)]">{n.title}</p>
+                      {!n.read ? <Badge variant="default">Nueva</Badge> : null}
+                    </div>
+                    <p className="text-xs text-slate-500">{n.body}</p>
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      {formatDateTime(n.createdAt)}
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-500">{n.body}</p>
-                  <p className="mt-1 text-[11px] text-slate-400">
-                    {formatDateTime(n.createdAt)}
-                  </p>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="px-2 py-6 text-center text-sm text-slate-500">
+                  No hay notificaciones.
+                </p>
+              )}
             </div>
           ) : null}
         </div>

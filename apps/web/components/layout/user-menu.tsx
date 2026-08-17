@@ -19,7 +19,7 @@ function initials(name: string) {
 }
 
 export function UserMenu() {
-  const { user } = useAuth();
+  const { user, viewAsRole, realRole } = useAuth();
   const { basePath } = useAppConfig();
   const { signOut, pending } = useSignOut();
   const [open, setOpen] = useState(false);
@@ -58,7 +58,11 @@ export function UserMenu() {
           <p className="max-w-[10rem] truncate text-sm font-semibold text-[var(--anasac-navy)]">
             {user.fullName}
           </p>
-          <p className="text-xs text-slate-500">{ROLE_LABELS[user.role]}</p>
+          <p className="text-xs text-slate-500">
+            {viewAsRole
+              ? `Vista: ${ROLE_LABELS[viewAsRole]}`
+              : ROLE_LABELS[user.role]}
+          </p>
         </div>
         <ChevronDown
           className={cn(
@@ -83,9 +87,14 @@ export function UserMenu() {
                   {user.fullName}
                 </p>
                 <p className="truncate text-xs text-slate-500">{user.email}</p>
-                <Badge className="mt-2" variant="navy">
-                  {ROLE_LABELS[user.role]}
-                </Badge>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  <Badge variant="navy">
+                    {ROLE_LABELS[realRole ?? user.role]}
+                  </Badge>
+                  {viewAsRole ? (
+                    <Badge variant="warning">Vista: {ROLE_LABELS[viewAsRole]}</Badge>
+                  ) : null}
+                </div>
               </div>
             </div>
           </div>

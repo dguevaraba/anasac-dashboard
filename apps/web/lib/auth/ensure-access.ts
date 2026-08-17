@@ -17,6 +17,14 @@ export async function ensureAccessAfterLogin(params: {
   const { supabase, user, inviteToken } = params;
 
   if (inviteToken) {
+    const existing = await fetchProfileById(supabase, user.id);
+    if (existing) {
+      if (!existing.isActive) {
+        return { status: "inactive", profile: existing };
+      }
+      return { status: "ok", profile: existing };
+    }
+
     const { error } = await supabase.rpc("accept_invitation", {
       invite_token: inviteToken,
     });

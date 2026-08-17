@@ -1,16 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Bubbles } from "@/components/ui/bubbles";
 import { useAuth } from "@/lib/auth/auth-context";
-import { fetchProfileById } from "@/lib/auth/profile";
-import { createBrowserSupabase } from "@/lib/supabase/browser";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { ROLE_LABELS } from "@/lib/auth/permissions";
 
 export function InviteClient({
   token,
@@ -21,60 +16,10 @@ export function InviteClient({
   roleName: string;
   fullName: string | null;
 }) {
-  const { loginWithGoogle, user } = useAuth();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [error, setError] = useState<string | null>(
-    searchParams.get("error") === "invitacion"
-      ? "No se pudo aceptar la invitación. Probá de nuevo."
-      : null,
-  );
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const { loginWithGoogle, user, logout, isLoading } = useAuth();
+  const [error, setError] = useState<string | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [accepting, setAccepting] = useState(false);
-
-  useEffect(() => {
-    if (user) {
-      router.replace("/dashboard");
-    }
-  }, [user, router]);
-
-  useEffect(() => {
-    if (!isSupabaseConfigured()) return;
-    let cancelled = false;
-
-    async function acceptIfSignedIn() {
-      const supabase = createBrowserSupabase();
-      const {
-        data: { user: authUser },
-      } = await supabase.auth.getUser();
-      if (!authUser || cancelled) return;
-
-      setAccepting(true);
-      const { error: rpcError } = await supabase.rpc("accept_invitation", {
-        invite_token: token,
-      });
-      if (cancelled) return;
-      if (rpcError) {
-        const profile = await fetchProfileById(supabase, authUser.id);
-        if (profile) {
-          router.replace("/dashboard");
-          return;
-        }
-        setAccepting(false);
-        setError(rpcError.message);
-        return;
-      }
-      router.replace("/dashboard");
-    }
-
-    void acceptIfSignedIn();
-    return () => {
-      cancelled = true;
-    };
-  }, [token, router]);
+  const [signingOut, setSigningOut] = useState(false);
 
   async function onGoogle() {
     setError(null);
@@ -86,37 +31,10 @@ export function InviteClient({
     }
   }
 
-  async function onEmailSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!isSupabaseConfigured()) return;
-    setSubmitting(true);
-    setError(null);
-    const supabase = createBrowserSupabase();
-    const { data, error: signError } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-    });
-    if (signError) {
-      setSubmitting(false);
-      setError(signError.message);
-      return;
-    }
-    if (!data.session) {
-      setSubmitting(false);
-      setError(
-        "Revisá tu correo para confirmar la cuenta y después volvé a este enlace.",
-      );
-      return;
-    }
-    const { error: rpcError } = await supabase.rpc("accept_invitation", {
-      invite_token: token,
-    });
-    setSubmitting(false);
-    if (rpcError) {
-      setError(rpcError.message);
-      return;
-    }
-    router.replace("/dashboard");
+  async function onSignOut() {
+    setSigningOut(true);
+    await logout();
+    setSigningOut(false);
   }
 
   return (
@@ -147,21 +65,41 @@ export function InviteClient({
             <span className="font-semibold text-[var(--anasac-teal)]">
               {roleName}
             </span>
-            . Entrá con tu Gmail (o el correo que uses).
+            .
           </p>
 
-          {accepting ? (
-            <p className="mt-6 text-center text-sm text-slate-500">
-              Aceptando invitación...
+          {error ? (
+            <p className="mt-6 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
             </p>
+          ) : null}
+
+          {isLoading ? (
+            <p className="mt-6 text-center text-sm text-slate-500">Cargando...</p>
+          ) : user ? (
+            <div className="mt-6 space-y-3 rounded-2xl border border-[var(--anasac-border)] bg-[var(--anasac-mist)] p-4">
+              <p className="text-sm text-slate-600">
+                Estás conectado como{" "}
+                <span className="font-semibold text-[var(--anasac-navy)]">
+                  {user.email}
+                </span>{" "}
+                ({ROLE_LABELS[user.role]}). Esta invitación es para otra persona.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={signingOut}
+                onClick={() => void onSignOut()}
+              >
+                {signingOut ? "Cerrando sesión..." : "Cerrar sesión para continuar"}
+              </Button>
+            </div>
           ) : (
             <>
-              {error ? (
-                <p className="mt-6 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-                  {error}
-                </p>
-              ) : null}
-
+              <p className="mt-4 text-center text-sm text-slate-500">
+                Entrá con tu Gmail para unirte.
+              </p>
               <Button
                 type="button"
                 className="mt-6 w-full"
@@ -170,47 +108,6 @@ export function InviteClient({
               >
                 {googleLoading ? "Conectando..." : "Continuar con Google"}
               </Button>
-
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-[var(--anasac-border)]" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase tracking-wide text-slate-400">
-                  <span className="bg-white px-2">o crear con otro correo</span>
-                </div>
-              </div>
-
-              <form onSubmit={onEmailSubmit} className="space-y-3">
-                <div className="space-y-1">
-                  <Label htmlFor="invite-email">Tu correo</Label>
-                  <Input
-                    id="invite-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="invite-password">Elegí una contraseña</Label>
-                  <Input
-                    id="invite-password"
-                    type="password"
-                    minLength={8}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  variant="outline"
-                  className="w-full"
-                  disabled={submitting}
-                >
-                  {submitting ? "Creando cuenta..." : "Crear cuenta"}
-                </Button>
-              </form>
             </>
           )}
         </div>
