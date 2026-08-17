@@ -109,7 +109,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
           {openProfile ? (
             <div className="absolute right-0 mt-2 w-56 rounded-xl border border-[var(--anasac-border)] bg-white p-2 shadow-xl">
               <Link
-                href="/profile"
+                href="/example/profile"
                 className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-[var(--anasac-mist)]"
                 onClick={() => setOpenProfile(false)}
               >
@@ -121,7 +121,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                 onClick={() => {
                   logout();
-                  router.push("/login");
+                  router.push("/example/login");
                 }}
               >
                 <LogOut className="h-4 w-4" />

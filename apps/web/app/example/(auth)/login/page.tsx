@@ -20,7 +20,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isLoading && user) {
-      router.replace("/dashboard");
+      router.replace("/example/dashboard");
     }
   }, [isLoading, user, router]);
 
@@ -34,7 +34,7 @@ export default function LoginPage() {
       setError(result.error ?? "No se pudo iniciar sesión.");
       return;
     }
-    router.replace("/dashboard");
+    router.replace("/example/dashboard");
   }
 
   return (

@@ -124,7 +124,7 @@ export default function DashboardPage() {
                   {nextCompetition.status.replace("_", " ")}
                 </Badge>
                 <Link
-                  href="/competitions"
+                  href="/example/competitions"
                   className="inline-block text-sm font-semibold text-[var(--anasac-teal)] hover:underline"
                 >
                   Ver competencias →
@@ -159,7 +159,7 @@ export default function DashboardPage() {
               </div>
             ))}
             <Link
-              href="/calendar"
+              href="/example/calendar"
               className="inline-block text-sm font-semibold text-[var(--anasac-teal)] hover:underline"
             >
               Ir al calendario →
@@ -179,7 +179,7 @@ export default function DashboardPage() {
             </p>
           </div>
           <Link
-            href="/payments"
+            href="/example/payments"
             className="text-sm font-semibold text-[var(--anasac-teal)] hover:underline"
           >
             Ir a pagos →
@@ -233,7 +233,7 @@ export default function DashboardPage() {
                 Pendiente de cobro: {formatCrc(nextPayment.pendingAmount)}
               </span>
               <Link
-                href="/results"
+                href="/example/results"
                 className="font-semibold text-[var(--anasac-teal)] hover:underline"
               >
                 Ver todos los resultados →

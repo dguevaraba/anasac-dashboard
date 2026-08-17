@@ -27,15 +27,15 @@ const NAV_ITEMS: {
   icon: ComponentType<{ className?: string }>;
   permission: Permission;
 }[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "dashboard:view" },
-  { href: "/swimmers", label: "Nadadores", icon: Waves, permission: "swimmers:view" },
-  { href: "/coaches", label: "Entrenadores", icon: UserRound, permission: "coaches:view" },
-  { href: "/competitions", label: "Competencias", icon: Trophy, permission: "competitions:view" },
-  { href: "/calendar", label: "Calendario", icon: CalendarDays, permission: "calendar:view" },
-  { href: "/results", label: "Resultados", icon: ClipboardList, permission: "results:view" },
-  { href: "/payments", label: "Pagos", icon: CreditCard, permission: "payments:view" },
-  { href: "/users", label: "Usuarios", icon: Users, permission: "users:view" },
-  { href: "/settings", label: "Configuración", icon: Settings, permission: "settings:view" },
+  { href: "/example/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "dashboard:view" },
+  { href: "/example/swimmers", label: "Nadadores", icon: Waves, permission: "swimmers:view" },
+  { href: "/example/coaches", label: "Entrenadores", icon: UserRound, permission: "coaches:view" },
+  { href: "/example/competitions", label: "Competencias", icon: Trophy, permission: "competitions:view" },
+  { href: "/example/calendar", label: "Calendario", icon: CalendarDays, permission: "calendar:view" },
+  { href: "/example/results", label: "Resultados", icon: ClipboardList, permission: "results:view" },
+  { href: "/example/payments", label: "Pagos", icon: CreditCard, permission: "payments:view" },
+  { href: "/example/users", label: "Usuarios", icon: Users, permission: "users:view" },
+  { href: "/example/settings", label: "Configuración", icon: Settings, permission: "settings:view" },
 ];
 
 export function Sidebar({
@@ -66,7 +66,7 @@ export function Sidebar({
       >
         <Bubbles preset="sidebar" />
         <div className="relative z-[1] flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
-          <Link href="/dashboard" className="flex items-center gap-3" onClick={onClose}>
+          <Link href="/example/dashboard" className="flex items-center gap-3" onClick={onClose}>
             <div className="relative h-11 w-16 overflow-hidden rounded-md bg-white/95 p-1">
               <Image
                 src="/anasac-logo.png"

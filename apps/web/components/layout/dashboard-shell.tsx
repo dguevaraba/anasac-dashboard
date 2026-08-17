@@ -13,7 +13,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      router.replace("/login");
+      router.replace("/example/login");
     }
   }, [isLoading, user, router]);
 

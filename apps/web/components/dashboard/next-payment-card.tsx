@@ -74,7 +74,7 @@ export function NextPaymentCard() {
             {isOverdue ? "Vencido" : isToday ? "Vence hoy" : "Próximo"}
           </Badge>
           <Link
-            href="/payments"
+            href="/example/payments"
             className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-[var(--anasac-navy)] transition hover:bg-[var(--anasac-aqua)]"
           >
             Ver pagos

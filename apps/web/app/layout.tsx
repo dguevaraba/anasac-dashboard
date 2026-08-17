@@ -14,9 +14,9 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "ANASAC Dashboard",
+  title: "ANASAC",
   description:
-    "Panel administrativo de la Asociación de Natación de Santa Cruz, Costa Rica",
+    "Asociación de Natación de Santa Cruz, Costa Rica",
 };
 
 export default function RootLayout({
