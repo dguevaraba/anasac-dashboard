@@ -97,7 +97,7 @@ export default function LoginScreen() {
               <Text style={styles.demoTitle}>Cuentas demo</Text>
               <Text style={styles.demoLine}>admin@anasaccr.com — Administrador</Text>
               <Text style={styles.demoLine}>entrenador@anasaccr.com — Entrenador</Text>
-              <Text style={styles.demoLine}>consulta@anasaccr.com — Consulta</Text>
+              <Text style={styles.demoLine}>nadador@anasaccr.com — Nadador</Text>
               <Text style={[styles.demoLine, { marginTop: 6 }]}>
                 Contraseña: {DEMO_PASSWORD}
               </Text>

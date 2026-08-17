@@ -5,17 +5,19 @@ import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { useAuth } from "@/lib/auth/auth-context";
+import { appHref, useAppConfig } from "@/lib/app-config";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, isLoading } = useAuth();
+  const { basePath } = useAppConfig();
   const router = useRouter();
 
   useEffect(() => {
     if (!isLoading && !user) {
-      router.replace("/example/login");
+      router.replace(appHref(basePath, "/login"));
     }
-  }, [isLoading, user, router]);
+  }, [isLoading, user, router, basePath]);
 
   if (isLoading || !user) {
     return (

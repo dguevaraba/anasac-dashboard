@@ -33,7 +33,7 @@ export default function UsersPage() {
         acc[u.role] += 1;
         return acc;
       },
-      { administrador: 0, entrenador: 0, consulta: 0 } as Record<Role, number>,
+      { administrador: 0, entrenador: 0, nadador: 0, asociado: 0, contador: 0 } as Record<Role, number>,
     );
   }, [items]);
 
@@ -78,7 +78,7 @@ export default function UsersPage() {
         actions={!canManage ? <Badge variant="muted">Solo lectura</Badge> : undefined}
       />
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {(Object.keys(roleCounts) as Role[]).map((role) => (
           <Card key={role} bubbles bubblePreset="card">
             <CardContent className="flex items-center justify-between p-4">
@@ -143,7 +143,9 @@ export default function UsersPage() {
                       >
                         <option value="administrador">Administrador</option>
                         <option value="entrenador">Entrenador</option>
-                        <option value="consulta">Consulta</option>
+                        <option value="nadador">Nadador</option>
+                        <option value="asociado">Asociado</option>
+                        <option value="contador">Contador</option>
                       </Select>
                     ) : (
                       <Badge variant="navy">{ROLE_LABELS[u.role]}</Badge>

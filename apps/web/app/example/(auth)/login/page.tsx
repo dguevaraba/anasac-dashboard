@@ -154,7 +154,9 @@ export default function LoginPage() {
                 <ul className="mt-2 space-y-1">
                   <li>admin@anasaccr.com — Administrador</li>
                   <li>entrenador@anasaccr.com — Entrenador</li>
-                  <li>consulta@anasaccr.com — Consulta</li>
+                  <li>nadador@anasaccr.com — Nadador</li>
+                  <li>asociado@anasaccr.com — Asociado</li>
+                  <li>contador@anasaccr.com — Contador</li>
                 </ul>
                 <p className="mt-2">
                   Contraseña: <code className="font-mono">{DEMO_PASSWORD}</code>

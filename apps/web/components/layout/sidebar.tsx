@@ -18,24 +18,25 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/auth-context";
+import { appHref, useAppConfig } from "@/lib/app-config";
 import { Bubbles } from "@/components/ui/bubbles";
 import type { Permission } from "@/types";
 
 const NAV_ITEMS: {
-  href: string;
+  path: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
   permission: Permission;
 }[] = [
-  { href: "/example/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "dashboard:view" },
-  { href: "/example/swimmers", label: "Nadadores", icon: Waves, permission: "swimmers:view" },
-  { href: "/example/coaches", label: "Entrenadores", icon: UserRound, permission: "coaches:view" },
-  { href: "/example/competitions", label: "Competencias", icon: Trophy, permission: "competitions:view" },
-  { href: "/example/calendar", label: "Calendario", icon: CalendarDays, permission: "calendar:view" },
-  { href: "/example/results", label: "Resultados", icon: ClipboardList, permission: "results:view" },
-  { href: "/example/payments", label: "Pagos", icon: CreditCard, permission: "payments:view" },
-  { href: "/example/users", label: "Usuarios", icon: Users, permission: "users:view" },
-  { href: "/example/settings", label: "Configuración", icon: Settings, permission: "settings:view" },
+  { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "dashboard:view" },
+  { path: "/swimmers", label: "Nadadores", icon: Waves, permission: "swimmers:view" },
+  { path: "/coaches", label: "Entrenadores", icon: UserRound, permission: "coaches:view" },
+  { path: "/competitions", label: "Competencias", icon: Trophy, permission: "competitions:view" },
+  { path: "/calendar", label: "Calendario", icon: CalendarDays, permission: "calendar:view" },
+  { path: "/results", label: "Resultados", icon: ClipboardList, permission: "results:view" },
+  { path: "/payments", label: "Pagos", icon: CreditCard, permission: "payments:view" },
+  { path: "/users", label: "Usuarios", icon: Users, permission: "users:view" },
+  { path: "/settings", label: "Configuración", icon: Settings, permission: "settings:view" },
 ];
 
 export function Sidebar({
@@ -47,6 +48,8 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const { can } = useAuth();
+  const { basePath, demo } = useAppConfig();
+  const homeHref = appHref(basePath, "/dashboard");
 
   return (
     <>
@@ -66,7 +69,7 @@ export function Sidebar({
       >
         <Bubbles preset="sidebar" />
         <div className="relative z-[1] flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
-          <Link href="/example/dashboard" className="flex items-center gap-3" onClick={onClose}>
+          <Link href={homeHref} className="flex items-center gap-3" onClick={onClose}>
             <div className="relative h-11 w-16 overflow-hidden rounded-md bg-white/95 p-1">
               <Image
                 src="/anasac-logo.png"
@@ -97,12 +100,13 @@ export function Sidebar({
         <nav className="relative z-[1] flex-1 space-y-1 overflow-y-auto px-3 py-4">
           {NAV_ITEMS.filter((item) => can(item.permission)).map((item) => {
             const Icon = item.icon;
+            const href = appHref(basePath, item.path);
             const active =
-              pathname === item.href || pathname.startsWith(`${item.href}/`);
+              pathname === href || pathname.startsWith(`${href}/`);
             return (
               <Link
-                key={item.href}
-                href={item.href}
+                key={item.path}
+                href={href}
                 onClick={onClose}
                 className={cn(
                   "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
@@ -121,7 +125,9 @@ export function Sidebar({
         <div className="relative z-[1] border-t border-white/10 p-4 text-xs text-white/50">
           <p>Asociación de Natación</p>
           <p>Santa Cruz, Costa Rica</p>
-          <p className="mt-2 text-[var(--anasac-aqua)]">Modo demostración</p>
+          {demo ? (
+            <p className="mt-2 text-[var(--anasac-aqua)]">Modo demostración</p>
+          ) : null}
         </div>
       </aside>
     </>

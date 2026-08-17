@@ -34,7 +34,16 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "payments:view",
     "settings:view",
   ],
-  consulta: [
+  nadador: [
+    "dashboard:view",
+    "swimmers:view",
+    "competitions:view",
+    "calendar:view",
+    "results:view",
+    "payments:view",
+    "settings:view",
+  ],
+  asociado: [
     "dashboard:view",
     "swimmers:view",
     "coaches:view",
@@ -42,6 +51,13 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "calendar:view",
     "results:view",
     "payments:view",
+    "settings:view",
+  ],
+  contador: [
+    "dashboard:view",
+    "swimmers:view",
+    "payments:view",
+    "payments:manage",
     "settings:view",
   ],
 };
@@ -72,5 +88,9 @@ export function canManage(
 export const ROLE_LABELS: Record<Role, string> = {
   administrador: "Administrador",
   entrenador: "Entrenador",
-  consulta: "Consulta",
+  nadador: "Nadador",
+  asociado: "Asociado",
+  contador: "Contador",
 };
+
+export const ALL_ROLES = Object.keys(ROLE_LABELS) as Role[];

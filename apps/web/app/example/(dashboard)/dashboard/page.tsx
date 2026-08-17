@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Bubbles } from "@/components/ui/bubbles";
 import { useAuth } from "@/lib/auth/auth-context";
+import { appHref, useAppConfig } from "@/lib/app-config";
 import {
   formatCrc,
   getNextInstitutionalPayment,
@@ -39,6 +40,7 @@ const STATUS_VARIANT = {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { basePath, demo } = useAppConfig();
   const activeSwimmers = swimmers.filter((s) => s.status === "activo").length;
   const nextCompetition = [...competitions]
     .filter((c) => c.status === "programada" || c.status === "en_curso")
@@ -56,7 +58,11 @@ export default function DashboardPage() {
     <div>
       <PageHeader
         title={`Hola, ${user?.fullName.split(" ")[0]}`}
-        description="Resumen operativo de ANASAC — datos de demostración."
+        description={
+          demo
+            ? "Resumen operativo de ANASAC — datos de demostración."
+            : "Resumen operativo de ANASAC."
+        }
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -124,7 +130,7 @@ export default function DashboardPage() {
                   {nextCompetition.status.replace("_", " ")}
                 </Badge>
                 <Link
-                  href="/example/competitions"
+                  href={appHref(basePath, "/competitions")}
                   className="inline-block text-sm font-semibold text-[var(--anasac-teal)] hover:underline"
                 >
                   Ver competencias →
@@ -159,7 +165,7 @@ export default function DashboardPage() {
               </div>
             ))}
             <Link
-              href="/example/calendar"
+              href={appHref(basePath, "/calendar")}
               className="inline-block text-sm font-semibold text-[var(--anasac-teal)] hover:underline"
             >
               Ir al calendario →
@@ -179,7 +185,7 @@ export default function DashboardPage() {
             </p>
           </div>
           <Link
-            href="/example/payments"
+            href={appHref(basePath, "/payments")}
             className="text-sm font-semibold text-[var(--anasac-teal)] hover:underline"
           >
             Ir a pagos →
@@ -233,7 +239,7 @@ export default function DashboardPage() {
                 Pendiente de cobro: {formatCrc(nextPayment.pendingAmount)}
               </span>
               <Link
-                href="/example/results"
+                href={appHref(basePath, "/results")}
                 className="font-semibold text-[var(--anasac-teal)] hover:underline"
               >
                 Ver todos los resultados →

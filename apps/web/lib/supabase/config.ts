@@ -1,23 +1,17 @@
-/**
- * Clientes Supabase (preparados para la fase con backend real).
- * En la fase mock no se llaman; las variables pueden estar vacías.
- */
-
 export function getSupabaseEnv() {
   return {
     url: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
     anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
-    useMock: process.env.NEXT_PUBLIC_USE_MOCK_DATA !== "false",
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
+    bootstrapAdminEmail: (process.env.ADMIN_BOOTSTRAP_EMAIL ?? "").toLowerCase().trim(),
   };
 }
 
-export function assertPublicSupabaseConfig() {
-  const { url, anonKey, useMock } = getSupabaseEnv();
-  if (useMock) return { url, anonKey, useMock };
-  if (!url || !anonKey) {
-    throw new Error(
-      "Faltan NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY",
-    );
-  }
-  return { url, anonKey, useMock };
+export function isSupabaseConfigured() {
+  const { url, anonKey } = getSupabaseEnv();
+  return Boolean(url && anonKey);
+}
+
+export function getAppUrl() {
+  return (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
 }

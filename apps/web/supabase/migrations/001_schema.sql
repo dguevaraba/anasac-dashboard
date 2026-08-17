@@ -151,7 +151,9 @@ create index if not exists idx_calendar_start on public.calendar_events (start_a
 
 insert into public.roles (code, name, description)
 values
-  ('administrador', 'Administrador', 'Acceso total al sistema'),
+  ('administrador', 'Administrador', 'Acceso total. Único rol que invita usuarios.'),
   ('entrenador', 'Entrenador', 'Gestión de nadadores y competencias asignadas'),
-  ('consulta', 'Consulta', 'Solo lectura')
+  ('nadador', 'Nadador', 'Consulta de su información deportiva'),
+  ('asociado', 'Asociado', 'Miembro de la asociación, principalmente lectura'),
+  ('contador', 'Contador', 'Gestión de cobros y pagos')
 on conflict (code) do nothing;

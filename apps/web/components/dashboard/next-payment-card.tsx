@@ -9,9 +9,11 @@ import {
   getNextInstitutionalPayment,
 } from "@/lib/mock/analytics";
 import { formatDate } from "@/lib/utils";
+import { appHref, useAppConfig } from "@/lib/app-config";
 
 export function NextPaymentCard() {
   const next = getNextInstitutionalPayment();
+  const { basePath } = useAppConfig();
   const isOverdue = next.daysRemaining < 0;
   const isToday = next.daysRemaining === 0;
 
@@ -74,7 +76,7 @@ export function NextPaymentCard() {
             {isOverdue ? "Vencido" : isToday ? "Vence hoy" : "Próximo"}
           </Badge>
           <Link
-            href="/example/payments"
+            href={appHref(basePath, "/payments")}
             className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-[var(--anasac-navy)] transition hover:bg-[var(--anasac-aqua)]"
           >
             Ver pagos

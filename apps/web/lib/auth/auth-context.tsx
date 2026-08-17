@@ -16,17 +16,18 @@ const SESSION_KEY = "anasac_mock_session";
 const COOKIE_NAME = "anasac_session";
 const AUTH_EVENT = "anasac-auth-change";
 
-interface AuthContextValue {
+export interface AuthContextValue {
   user: UserProfile | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  logout: () => void;
+  loginWithGoogle: (next?: string) => Promise<{ ok: boolean; error?: string }>;
+  logout: () => void | Promise<void>;
   switchRoleDemo: (role: Role) => void;
   can: (permission: Permission) => boolean;
   permissions: Permission[];
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+export const AuthContext = createContext<AuthContextValue | null>(null);
 
 function setSessionCookie(userId: string | null) {
   if (typeof document === "undefined") return;
@@ -76,7 +77,7 @@ function persistUser(user: UserProfile | null) {
   notifyAuthChange();
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function MockAuthProvider({ children }: { children: ReactNode }) {
   const user = useSyncExternalStore(subscribe, readSession, () => null);
   const isLoading = false;
 
@@ -90,6 +91,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     persistUser(found);
     return { ok: true };
+  }, []);
+
+  const loginWithGoogle = useCallback(async () => {
+    return { ok: false, error: "Google no está disponible en el modo demo." };
   }, []);
 
   const logout = useCallback(() => {
@@ -113,8 +118,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ user, isLoading, login, logout, switchRoleDemo, can, permissions }),
-    [user, isLoading, login, logout, switchRoleDemo, can, permissions],
+    () => ({
+      user,
+      isLoading,
+      login,
+      loginWithGoogle,
+      logout,
+      switchRoleDemo,
+      can,
+      permissions,
+    }),
+    [user, isLoading, login, loginWithGoogle, logout, switchRoleDemo, can, permissions],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

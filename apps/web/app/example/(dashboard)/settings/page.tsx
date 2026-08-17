@@ -4,16 +4,22 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth/auth-context";
+import { useAppConfig } from "@/lib/app-config";
 import { ROLE_LABELS } from "@/lib/auth/permissions";
 
 export default function SettingsPage() {
   const { user, can } = useAuth();
+  const { demo } = useAppConfig();
 
   return (
     <div>
       <PageHeader
         title="Configuración"
-        description="Preferencias generales de la aplicación. Supabase se conectará en una fase posterior."
+        description={
+          demo
+            ? "Preferencias generales de la aplicación (modo demostración)."
+            : "Preferencias generales de la aplicación."
+        }
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -57,11 +63,15 @@ export default function SettingsPage() {
           <CardContent className="space-y-3 text-sm">
             <div className="flex items-center justify-between gap-3">
               <span className="text-slate-500">Modo de datos</span>
-              <Badge variant="warning">Mock / demo</Badge>
+              <Badge variant={demo ? "warning" : "success"}>
+                {demo ? "Mock / demo" : "Supabase"}
+              </Badge>
             </div>
             <div className="flex items-center justify-between gap-3">
               <span className="text-slate-500">Autenticación</span>
-              <Badge variant="muted">Mock (próximo: Supabase Auth)</Badge>
+              <Badge variant={demo ? "muted" : "success"}>
+                {demo ? "Mock" : "Google / invitación"}
+              </Badge>
             </div>
             <div className="flex items-center justify-between gap-3">
               <span className="text-slate-500">Usuario activo</span>
@@ -84,16 +94,8 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-slate-600">
             <p>
+              Esta aplicación vive en <strong>dashboard.anasaccr.com</strong>.
               El sitio público <strong>anasaccr.com</strong> no se modifica.
-            </p>
-            <p>
-              Esta aplicación se desplegará de forma independiente y, más adelante,
-              se publicará en <strong>dashboard.anasaccr.com</strong> mediante un
-              registro DNS exclusivo del subdominio <code>dashboard</code>.
-            </p>
-            <p>
-              Antes de tocar DNS se documentará exactamente el registro a crear.
-              No se alterarán registros A/CNAME/MX del dominio principal.
             </p>
           </CardContent>
         </Card>

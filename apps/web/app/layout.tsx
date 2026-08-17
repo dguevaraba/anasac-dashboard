@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Manrope, Outfit } from "next/font/google";
-import { AuthProvider } from "@/lib/auth/auth-context";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -26,9 +25,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${manrope.variable} ${outfit.variable} h-full antialiased`}>
-      <body className="min-h-full">
-        <AuthProvider>{children}</AuthProvider>
-      </body>
+      <body className="min-h-full">{children}</body>
     </html>
   );
 }

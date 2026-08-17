@@ -1,4 +1,9 @@
-export type Role = "administrador" | "entrenador" | "consulta";
+export type Role =
+  | "administrador"
+  | "entrenador"
+  | "nadador"
+  | "asociado"
+  | "contador";
 
 export type Permission =
   | "dashboard:view"
