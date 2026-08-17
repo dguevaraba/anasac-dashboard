@@ -1,14 +1,20 @@
 "use client";
 
+import { LogOut } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAppConfig } from "@/lib/app-config";
 import { useAuth } from "@/lib/auth/auth-context";
+import { useSignOut } from "@/lib/auth/use-sign-out";
 import { ROLE_LABELS } from "@/lib/auth/permissions";
 import { formatDate } from "@/lib/utils";
 
 export default function ProfilePage() {
   const { user, permissions } = useAuth();
+  const { demo } = useAppConfig();
+  const { signOut, pending } = useSignOut();
 
   if (!user) return null;
 
@@ -16,7 +22,11 @@ export default function ProfilePage() {
     <div>
       <PageHeader
         title="Mi perfil"
-        description="Información de la cuenta activa en modo demostración."
+        description={
+          demo
+            ? "Información de la cuenta activa en modo demostración."
+            : "Información de tu cuenta."
+        }
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -40,6 +50,16 @@ export default function ProfilePage() {
             <Badge className="mt-3" variant="navy">
               {ROLE_LABELS[user.role]}
             </Badge>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-5 w-full text-red-600 hover:bg-red-50 hover:text-red-700"
+              disabled={pending}
+              onClick={() => void signOut()}
+            >
+              <LogOut className="h-4 w-4" />
+              {pending ? "Saliendo..." : "Cerrar sesión"}
+            </Button>
           </CardContent>
         </Card>
 

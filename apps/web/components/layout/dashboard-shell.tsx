@@ -30,9 +30,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen bg-[var(--anasac-mist)]">
+    <div className="flex min-h-dvh bg-[var(--anasac-mist)]">
+      <div className="hidden w-72 shrink-0 lg:block" aria-hidden />
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="relative flex min-w-0 flex-1 flex-col">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 overflow-hidden"

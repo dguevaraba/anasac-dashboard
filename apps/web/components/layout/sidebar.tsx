@@ -9,6 +9,7 @@ import {
   ClipboardList,
   CreditCard,
   LayoutDashboard,
+  LogOut,
   Settings,
   Trophy,
   Users,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/auth-context";
+import { useSignOut } from "@/lib/auth/use-sign-out";
 import { appHref, useAppConfig } from "@/lib/app-config";
 import { Bubbles } from "@/components/ui/bubbles";
 import type { Permission } from "@/types";
@@ -48,6 +50,7 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const { can } = useAuth();
+  const { signOut, pending } = useSignOut();
   const { basePath, demo } = useAppConfig();
   const homeHref = appHref(basePath, "/dashboard");
 
@@ -63,7 +66,7 @@ export function Sidebar({
       />
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col overflow-hidden border-r border-white/10 bg-[var(--anasac-navy)] text-white transition-transform duration-300 lg:static lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex h-dvh w-72 flex-col overflow-hidden border-r border-white/10 bg-[var(--anasac-navy)] text-white transition-transform duration-300 lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -122,12 +125,26 @@ export function Sidebar({
           })}
         </nav>
 
-        <div className="relative z-[1] border-t border-white/10 p-4 text-xs text-white/50">
-          <p>Asociación de Natación</p>
-          <p>Santa Cruz, Costa Rica</p>
-          {demo ? (
-            <p className="mt-2 text-[var(--anasac-aqua)]">Modo demostración</p>
-          ) : null}
+        <div className="relative z-[1] shrink-0 border-t border-white/10 p-3">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => {
+              void signOut();
+              onClose();
+            }}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-60"
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            {pending ? "Saliendo..." : "Cerrar sesión"}
+          </button>
+          <div className="px-3 pb-1 pt-3 text-xs text-white/80">
+            <p>Asociación de Natación</p>
+            <p className="font-semibold text-white">Santa Cruz, Costa Rica</p>
+            {demo ? (
+              <p className="mt-2 text-[var(--anasac-aqua)]">Modo demostración</p>
+            ) : null}
+          </div>
         </div>
       </aside>
     </>

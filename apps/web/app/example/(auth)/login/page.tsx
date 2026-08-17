@@ -77,8 +77,8 @@ export default function LoginPage() {
               calendario y resultados de Santa Cruz, Costa Rica.
             </p>
           </div>
-          <div className="relative z-[1] space-y-2 text-sm text-white/70">
-            <p>«Supera tus límites. Conquista tus metas.»</p>
+          <div className="relative z-[1] space-y-2 text-sm text-white/80">
+            <p className="font-bold text-white">«Supera tus límites. Conquista tus metas.»</p>
             <p className="text-xs text-white/50">Versión demo con datos mock</p>
           </div>
         </div>

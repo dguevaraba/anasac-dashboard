@@ -107,9 +107,9 @@ function LoginForm() {
               Panel administrativo de la Asociación de Natación de Santa Cruz.
             </p>
           </div>
-          <div className="relative z-[1] space-y-2 text-sm text-white/70">
-            <p>«Supera tus límites. Conquista tus metas.»</p>
-            <p className="text-xs text-white/50">Santa Cruz, Costa Rica</p>
+          <div className="relative z-[1] space-y-2 text-sm text-white/80">
+            <p className="font-bold text-white">«Supera tus límites. Conquista tus metas.»</p>
+            <p className="text-xs font-medium text-white/90">Santa Cruz, Costa Rica</p>
           </div>
         </div>
 

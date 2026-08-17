@@ -1,31 +1,34 @@
 "use client";
 
-import Link from "next/link";
-import { Bell, LogOut, Menu, UserCircle2 } from "lucide-react";
-import { useState } from "react";
-import { useAuth } from "@/lib/auth/auth-context";
-import { appHref, useAppConfig } from "@/lib/app-config";
-import { ROLE_LABELS } from "@/lib/auth/permissions";
+import { Bell, Menu } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { notifications } from "@/lib/mock/data";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Bubbles } from "@/components/ui/bubbles";
+import { UserMenu } from "@/components/layout/user-menu";
 import { formatDateTime } from "@/lib/utils";
-import { useRouter } from "next/navigation";
 
 export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
-  const { user, logout } = useAuth();
-  const { basePath } = useAppConfig();
-  const router = useRouter();
   const [openNotif, setOpenNotif] = useState(false);
-  const [openProfile, setOpenProfile] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
   const unread = notifications.filter((n) => !n.read).length;
 
-  if (!user) return null;
+  useEffect(() => {
+    function onPointerDown(event: PointerEvent) {
+      if (!notifRef.current?.contains(event.target as Node)) {
+        setOpenNotif(false);
+      }
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, []);
 
   return (
-    <header className="relative sticky top-0 z-30 flex h-16 items-center justify-between gap-3 overflow-hidden border-b border-[var(--anasac-border)] bg-white/90 px-4 backdrop-blur md:px-6">
-      <Bubbles preset="header" className="opacity-70" />
+    <header className="relative sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-[var(--anasac-border)] bg-white/90 px-4 backdrop-blur md:px-6">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <Bubbles preset="header" className="opacity-70" />
+      </div>
       <div className="relative z-[1] flex items-center gap-3">
         <Button
           variant="ghost"
@@ -45,15 +48,12 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
       </div>
 
       <div className="relative z-[1] flex items-center gap-2">
-        <div className="relative">
+        <div ref={notifRef} className="relative">
           <Button
             variant="ghost"
             size="icon"
             aria-label="Notificaciones"
-            onClick={() => {
-              setOpenNotif((v) => !v);
-              setOpenProfile(false);
-            }}
+            onClick={() => setOpenNotif((v) => !v)}
           >
             <Bell className="h-5 w-5" />
             {unread > 0 ? (
@@ -61,7 +61,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
             ) : null}
           </Button>
           {openNotif ? (
-            <div className="absolute right-0 mt-2 w-80 rounded-xl border border-[var(--anasac-border)] bg-white p-2 shadow-xl">
+            <div className="absolute right-0 z-50 mt-2 w-80 rounded-xl border border-[var(--anasac-border)] bg-white p-2 shadow-xl">
               <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Notificaciones
               </p>
@@ -84,54 +84,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
           ) : null}
         </div>
 
-        <div className="relative">
-          <button
-            type="button"
-            className="flex items-center gap-2 rounded-xl border border-[var(--anasac-border)] bg-[var(--anasac-mist)] px-2.5 py-1.5 text-left transition hover:bg-white"
-            onClick={() => {
-              setOpenProfile((v) => !v);
-              setOpenNotif(false);
-            }}
-          >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--anasac-teal)] text-xs font-bold text-white">
-              {user.fullName
-                .split(" ")
-                .map((p) => p[0])
-                .slice(0, 2)
-                .join("")}
-            </div>
-            <div className="hidden min-w-0 md:block">
-              <p className="truncate text-sm font-semibold text-[var(--anasac-navy)]">
-                {user.fullName}
-              </p>
-              <p className="text-xs text-slate-500">{ROLE_LABELS[user.role]}</p>
-            </div>
-          </button>
-
-          {openProfile ? (
-            <div className="absolute right-0 mt-2 w-56 rounded-xl border border-[var(--anasac-border)] bg-white p-2 shadow-xl">
-              <Link
-                href={appHref(basePath, "/profile")}
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-[var(--anasac-mist)]"
-                onClick={() => setOpenProfile(false)}
-              >
-                <UserCircle2 className="h-4 w-4" />
-                Mi perfil
-              </Link>
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                onClick={() => {
-                  logout();
-                  router.push(appHref(basePath, "/login"));
-                }}
-              >
-                <LogOut className="h-4 w-4" />
-                Cerrar sesión
-              </button>
-            </div>
-          ) : null}
-        </div>
+        <UserMenu />
       </div>
     </header>
   );
