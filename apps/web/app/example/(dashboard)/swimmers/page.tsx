@@ -267,8 +267,10 @@ export default function SwimmersPage() {
                     <p className="text-xs text-slate-500 capitalize">{s.gender}</p>
                   </TableCell>
                   <TableCell>{getAge(s.birthDate)}</TableCell>
-                  <TableCell>{findCategory(s.categoryId)?.name}</TableCell>
-                  <TableCell>{findTeam(s.teamId)?.name}</TableCell>
+                  <TableCell>
+                    {s.categoryId ? findCategory(s.categoryId)?.name : "—"}
+                  </TableCell>
+                  <TableCell>{s.teamId ? findTeam(s.teamId)?.name : "—"}</TableCell>
                   <TableCell>{findCoach(s.coachId)?.fullName ?? "—"}</TableCell>
                   <TableCell>
                     <Badge variant={STATUS_VARIANT[s.status]}>{s.status}</Badge>

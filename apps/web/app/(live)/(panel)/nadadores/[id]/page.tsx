@@ -4,7 +4,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
   puedeVerDatosSensiblesNadador,
   rolActualNadadores,
-  selectNadador,
+  SELECT_NADADOR,
 } from "../acceso";
 import type { NadadorItem, OpcionItem } from "../gestor-nadadores";
 import { FichaNadador } from "./ficha-nadador";
@@ -42,7 +42,7 @@ export default async function PaginaFichaNadador({
     await Promise.all([
       supabase
         .from("swimmers")
-        .select(selectNadador(verSensibles))
+        .select(SELECT_NADADOR)
         .eq("id", id)
         .maybeSingle(),
       supabase.from("categories").select("id, name").order("min_age", { ascending: true }),
@@ -57,31 +57,27 @@ export default async function PaginaFichaNadador({
     notFound();
   }
 
-  const r = row as Record<string, unknown>;
-
   const nadador: NadadorItem = {
-    id: String(r.id),
-    nombre: String(r.first_name),
-    apellido: String(r.last_name),
-    cedula: verSensibles ? ((r.document_id as string | null) ?? null) : null,
-    fechaNacimiento: String(r.birth_date).slice(0, 10),
-    genero: String(r.gender),
-    correo: verSensibles ? ((r.email as string | null) ?? null) : null,
-    telefono: verSensibles ? ((r.phone as string | null) ?? null) : null,
-    telefonoEncargado: verSensibles
-      ? ((r.guardian_phone as string | null) ?? null)
-      : null,
-    tipoSangre: (r.blood_type as string | null) ?? null,
-    fotoUrl: (r.photo_url as string | null) ?? null,
+    id: row.id,
+    nombre: row.first_name,
+    apellido: row.last_name,
+    cedula: verSensibles ? row.document_id : null,
+    fechaNacimiento: String(row.birth_date).slice(0, 10),
+    genero: row.gender,
+    correo: verSensibles ? row.email : null,
+    telefono: verSensibles ? row.phone : null,
+    telefonoEncargado: verSensibles ? row.guardian_phone : null,
+    tipoSangre: row.blood_type,
+    fotoUrl: row.photo_url,
     fechaIngreso:
-      verSensibles && r.join_date ? String(r.join_date).slice(0, 10) : null,
-    diaPago: verSensibles ? ((r.payment_day as number | null) ?? null) : null,
-    estado: r.status as NadadorItem["estado"],
-    categoriaId: (r.category_id as string | null) ?? null,
-    entrenadorId: (r.coach_id as string | null) ?? null,
-    categoriaNombre: textoRelacion(r.categories as Rel),
-    entrenadorNombre: textoRelacion(r.coaches as Rel, "full_name"),
-    creadoEn: String(r.created_at),
+      verSensibles && row.join_date ? String(row.join_date).slice(0, 10) : null,
+    diaPago: verSensibles ? (row.payment_day ?? null) : null,
+    estado: row.status as NadadorItem["estado"],
+    categoriaId: row.category_id,
+    entrenadorId: row.coach_id,
+    categoriaNombre: textoRelacion(row.categories as Rel),
+    entrenadorNombre: textoRelacion(row.coaches as Rel, "full_name"),
+    creadoEn: row.created_at,
   };
 
   const categorias: OpcionItem[] = (filasCategorias ?? []).map((c) => ({

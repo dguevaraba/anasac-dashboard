@@ -147,6 +147,13 @@ export function LiveAuthProvider({ children }: { children: ReactNode }) {
     ? { ...profile, role: effectiveRole ?? profile.role }
     : null;
 
+  // Asociados u otros roles no admin: limpiar vista previa residual del navegador.
+  useEffect(() => {
+    if (!isLoading && realRole && realRole !== "administrador" && viewAsRole) {
+      writeViewAsRole(null);
+    }
+  }, [isLoading, realRole, viewAsRole]);
+
   const setViewAsRole = useCallback(
     (role: Role | null) => {
       if (realRole !== "administrador") return;

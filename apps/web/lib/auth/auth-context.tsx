@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useSyncExternalStore,
   type ReactNode,
@@ -137,6 +138,13 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
     },
     [realRole],
   );
+
+  // Roles que no son admin no deben conservar vista previa en el navegador.
+  useEffect(() => {
+    if (realRole && realRole !== "administrador" && viewAsRole) {
+      writeViewAsRole(null);
+    }
+  }, [realRole, viewAsRole]);
 
   const permissions = useMemo(
     () => (effectiveRole ? getPermissionsForRole(effectiveRole) : []),

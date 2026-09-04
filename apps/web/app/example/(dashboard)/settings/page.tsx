@@ -14,7 +14,8 @@ import type { Role } from "@/types";
 export default function SettingsPage() {
   const { user, can, realRole, viewAsRole, setViewAsRole } = useAuth();
   const { demo } = useAppConfig();
-  const isAdmin = realRole === "administrador";
+  // Usar siempre el rol real: si el admin simula asociado, sigue viendo esta sección.
+  const puedeVistaPreviaRol = realRole === "administrador";
   const previewOn = Boolean(viewAsRole);
   const [selectedRole, setSelectedRole] = useState<Role>(viewAsRole ?? "contador");
   const activePreviewRole = viewAsRole ?? selectedRole;
@@ -32,7 +33,7 @@ export default function SettingsPage() {
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        {isAdmin ? (
+        {puedeVistaPreviaRol ? (
           <Card className="lg:col-span-2" bubbles bubblePreset="panel">
             <CardHeader>
               <CardTitle>Vista previa de rol</CardTitle>
@@ -44,7 +45,9 @@ export default function SettingsPage() {
                     Ver la app como otro rol
                   </p>
                   <p className="mt-1 text-sm text-slate-500">
-                    Solo cambia menús y botones. Tu cuenta sigue siendo administrador y la base de datos no se modifica.
+                    Solo cambia menús y botones. Tu cuenta sigue siendo administrador
+                    (aunque simules asociado u otro rol) y la base de datos no se
+                    modifica.
                   </p>
                 </div>
                 <Switch

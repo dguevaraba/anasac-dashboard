@@ -16,14 +16,6 @@ export async function rolActualNadadores() {
   return { supabase, role: profile?.role ?? null };
 }
 
-export const SELECT_NADADOR_BASE =
-  "id, first_name, last_name, birth_date, gender, blood_type, photo_url, status, category_id, coach_id, created_at, categories(name), coaches(full_name)";
-
-export const SELECT_NADADOR_SENSIBLE =
-  "document_id, email, phone, guardian_phone, join_date, payment_day";
-
-export function selectNadador(incluyeSensibles: boolean) {
-  return incluyeSensibles
-    ? `${SELECT_NADADOR_BASE}, ${SELECT_NADADOR_SENSIBLE}`
-    : SELECT_NADADOR_BASE;
-}
+/** Literal fijo para el client tipado de Supabase. */
+export const SELECT_NADADOR =
+  "id, first_name, last_name, document_id, birth_date, gender, email, phone, guardian_phone, blood_type, photo_url, join_date, payment_day, status, category_id, coach_id, created_at, categories(name), coaches(full_name)" as const;
