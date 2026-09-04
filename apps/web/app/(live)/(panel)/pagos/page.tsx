@@ -1,4 +1,7 @@
+import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/layout/empty-state";
+import { fetchProfileById } from "@/lib/auth/profile";
+import { hasPermission } from "@/lib/auth/permissions";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createServerSupabase } from "@/lib/supabase/server";
 import {
@@ -20,11 +23,21 @@ export default async function PaymentsPage() {
   }
 
   const supabase = await createServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) notFound();
+
+  const profile = await fetchProfileById(supabase, user.id);
+  if (!profile || !hasPermission(profile.role, "payments:view")) {
+    notFound();
+  }
+
   const [{ data: filasPagos }, { data: filasNadadores }] = await Promise.all([
     supabase
       .from("payments")
       .select(
-        "id, swimmer_id, concept, amount_crc, due_date, paid_at, status, period, swimmers(first_name, last_name)",
+        "id, swimmer_id, concept, amount_crc, due_date, paid_at, status, period, invoice_url, swimmers(first_name, last_name, training_group)",
       )
       .order("period", { ascending: true }),
     supabase
@@ -35,8 +48,16 @@ export default async function PaymentsPage() {
 
   const pagos: PagoItem[] = (filasPagos ?? []).map((row) => {
     const rel = row.swimmers as
-      | { first_name?: string; last_name?: string }
-      | { first_name?: string; last_name?: string }[]
+      | {
+          first_name?: string;
+          last_name?: string;
+          training_group?: string | null;
+        }
+      | {
+          first_name?: string;
+          last_name?: string;
+          training_group?: string | null;
+        }[]
       | null;
     const swimmer = Array.isArray(rel) ? rel[0] : rel;
     return {
@@ -45,12 +66,14 @@ export default async function PaymentsPage() {
       nadador: swimmer
         ? `${swimmer.first_name ?? ""} ${swimmer.last_name ?? ""}`.trim()
         : "—",
+      grupo: swimmer?.training_group ?? null,
       concept: row.concept as string,
       amount: Number(row.amount_crc) || 0,
       dueDate: String(row.due_date).slice(0, 10),
       paidAt: row.paid_at ? String(row.paid_at).slice(0, 10) : null,
       status: row.status as PagoItem["status"],
       period: row.period as string,
+      invoiceUrl: (row.invoice_url as string | null) ?? null,
     };
   });
 

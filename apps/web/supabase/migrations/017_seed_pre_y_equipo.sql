@@ -117,7 +117,18 @@ insert into public.payments (
   swimmer_id, concept, amount_crc, due_date, paid_at, status, period, notes
 )
 select
-  s.id,
+  coalesce(
+    (select i.id from ins_swimmers i where i.id = s.id),
+    (select w.id from public.swimmers w where w.id = s.id),
+    (
+      select w.id
+      from public.swimmers w
+      where w.first_name = s.first_name
+        and w.last_name = s.last_name
+      order by case when w.training_group = 'Pre y equipo' then 0 else 1 end
+      limit 1
+    )
+  ) as swimmer_id,
   'Mensualidad ' || to_char(month_start, 'YYYY-MM'),
   s.amount_crc,
   month_start,
@@ -158,8 +169,16 @@ cross join lateral (
   )::date as month_start
 ) months
 where (s.exit_period is null or to_char(month_start, 'YYYY-MM') <= s.exit_period)
-  and (
-    s.id in (select id from ins_swimmers)
-    or exists (select 1 from public.swimmers w where w.id = s.id)
-  )
+  and coalesce(
+    (select i.id from ins_swimmers i where i.id = s.id),
+    (select w.id from public.swimmers w where w.id = s.id),
+    (
+      select w.id
+      from public.swimmers w
+      where w.first_name = s.first_name
+        and w.last_name = s.last_name
+      order by case when w.training_group = 'Pre y equipo' then 0 else 1 end
+      limit 1
+    )
+  ) is not null
 on conflict (swimmer_id, period) do nothing;

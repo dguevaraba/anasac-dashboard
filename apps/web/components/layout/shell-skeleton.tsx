@@ -4,6 +4,8 @@ import { usePathname } from "next/navigation";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { FichaNadadorSkeleton } from "@/components/nadadores/ficha-nadador-skeleton";
 import { NadadoresSkeleton } from "@/components/nadadores/nadadores-skeleton";
+import { FichaPagoSkeleton } from "@/components/pagos/ficha-pago-skeleton";
+import { PagosSkeleton } from "@/components/pagos/pagos-skeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAppConfig } from "@/lib/app-config";
 
@@ -20,6 +22,18 @@ function ContenidoSkeleton() {
 
   if (path.startsWith("/nadadores/")) {
     return <FichaNadadorSkeleton />;
+  }
+
+  if (path === "/pagos" || path === "/payments") {
+    return <PagosSkeleton />;
+  }
+
+  if (
+    path.startsWith("/pagos/nadador/") ||
+    path.startsWith("/pagos/") ||
+    path.startsWith("/payments/")
+  ) {
+    return <FichaPagoSkeleton />;
   }
 
   return <DashboardSkeleton />;

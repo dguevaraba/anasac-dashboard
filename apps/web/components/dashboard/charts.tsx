@@ -7,6 +7,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  ComposedChart,
   Legend,
   Line,
   LineChart,
@@ -146,65 +147,113 @@ export function ResultsCharts() {
 
 export function PaymentsChart({
   data,
-  subtitle = "Montos en colones (CRC) — datos demo",
+  subtitle = "Últimos 6 meses · montos por estado",
   compact = false,
   className,
 }: {
-  data?: { mes: string; cobrado: number; pendiente: number }[];
+  data?: {
+    mes: string;
+    pagado: number;
+    pendiente: number;
+    vencido: number;
+    parcial: number;
+    cobertura?: number;
+  }[];
   subtitle?: string;
   compact?: boolean;
   className?: string;
 }) {
-  const chartData = data ?? paymentsByMonth;
+  const chartData =
+    data ??
+    paymentsByMonth.map((row) => ({
+      mes: row.mes,
+      pagado: row.cobrado,
+      pendiente: row.pendiente,
+      vencido: 0,
+      parcial: 0,
+      cobertura:
+        row.cobrado + row.pendiente > 0
+          ? Math.round((row.cobrado / (row.cobrado + row.pendiente)) * 100)
+          : 0,
+    }));
+
   return (
     <Card bubbles bubblePreset="header" className={className}>
       <CardHeader className={compact ? "p-3 pb-1" : undefined}>
         <CardTitle className={compact ? "text-sm" : undefined}>
-          Pagos cobrados vs pendientes
+          Cobranza por estado
         </CardTitle>
-        <p className={cn("text-xs text-slate-500", !subtitle && "hidden")}>{subtitle}</p>
+        <p className={cn("text-xs text-slate-500", !subtitle && "hidden")}>
+          {subtitle}
+        </p>
       </CardHeader>
       <CardContent className={compact ? "h-56 p-3 pt-0 md:h-64" : "h-72"}>
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData}>
-            <defs>
-              <linearGradient id="cobradoFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={COLORS.teal} stopOpacity={0.45} />
-                <stop offset="95%" stopColor={COLORS.teal} stopOpacity={0.05} />
-              </linearGradient>
-              <linearGradient id="pendienteFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={COLORS.warn} stopOpacity={0.4} />
-                <stop offset="95%" stopColor={COLORS.warn} stopOpacity={0.05} />
-              </linearGradient>
-            </defs>
+          <ComposedChart data={chartData} barCategoryGap="18%">
             <CartesianGrid strokeDasharray="3 3" stroke="#e2eef3" />
             <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
             <YAxis
+              yAxisId="monto"
               tick={{ fontSize: 11 }}
               tickFormatter={(v: number) => `${Math.round(v / 1000)}k`}
             />
+            <YAxis
+              yAxisId="pct"
+              orientation="right"
+              domain={[0, 100]}
+              width={36}
+              tick={{ fontSize: 11 }}
+              tickFormatter={(v: number) => `${v}%`}
+            />
             <Tooltip
               contentStyle={tooltipStyle}
-              formatter={(value) => formatCrc(Number(value ?? 0))}
+              formatter={(value, name) => {
+                if (name === "Cobertura %") {
+                  return [`${Number(value ?? 0)}%`, name];
+                }
+                return [formatCrc(Number(value ?? 0)), String(name)];
+              }}
             />
             <Legend />
-            <Area
-              type="monotone"
-              dataKey="cobrado"
-              name="Cobrado"
-              stroke={COLORS.teal}
-              fill="url(#cobradoFill)"
-              strokeWidth={2}
+            <Bar
+              yAxisId="monto"
+              dataKey="pagado"
+              name="Pagado"
+              stackId="estado"
+              fill={COLORS.teal}
             />
-            <Area
-              type="monotone"
+            <Bar
+              yAxisId="monto"
               dataKey="pendiente"
               name="Pendiente"
-              stroke={COLORS.warn}
-              fill="url(#pendienteFill)"
-              strokeWidth={2}
+              stackId="estado"
+              fill={COLORS.warn}
             />
-          </AreaChart>
+            <Bar
+              yAxisId="monto"
+              dataKey="vencido"
+              name="Vencido"
+              stackId="estado"
+              fill="#c45c4a"
+            />
+            <Bar
+              yAxisId="monto"
+              dataKey="parcial"
+              name="Parcial"
+              stackId="estado"
+              fill={COLORS.soft}
+              radius={[6, 6, 0, 0]}
+            />
+            <Line
+              yAxisId="pct"
+              type="monotone"
+              dataKey="cobertura"
+              name="Cobertura %"
+              stroke={COLORS.navy}
+              strokeWidth={2.5}
+              dot={{ r: 3.5, fill: COLORS.aqua, stroke: COLORS.navy }}
+            />
+          </ComposedChart>
         </ResponsiveContainer>
       </CardContent>
     </Card>

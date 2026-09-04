@@ -10,6 +10,7 @@ import {
 } from "@/lib/mock/analytics";
 import { formatDate, cn } from "@/lib/utils";
 import { appHref, useAppConfig } from "@/lib/app-config";
+import { useAuth } from "@/lib/auth/auth-context";
 
 export type NextPaymentCardProps = {
   next?: {
@@ -39,9 +40,10 @@ export function NextPaymentCard({
 }: NextPaymentCardProps & { className?: string }) {
   const data = next ?? getNextInstitutionalPayment();
   const { basePath } = useAppConfig();
+  const { can } = useAuth();
   const isOverdue = data.daysRemaining < 0;
   const isToday = data.daysRemaining === 0;
-  const showFooter = showBadge || showLink;
+  const showFooter = showBadge || (showLink && can("payments:view"));
   const eyebrow = monthLabel ? title : "Próximo cobro";
   const heading = monthLabel ?? title;
 
@@ -127,7 +129,12 @@ export function NextPaymentCard({
             >
               {formatCrc(data.pendingAmount)}
             </p>
-            <p className="text-[11px] text-white/70">
+            <p
+              className={cn(
+                "font-semibold text-[var(--anasac-aqua)]",
+                compact ? "mt-0.5 text-xs" : "mt-1 text-sm",
+              )}
+            >
               {data.pendingCount} cuota{data.pendingCount === 1 ? "" : "s"}
             </p>
           </div>
@@ -140,7 +147,7 @@ export function NextPaymentCard({
                 {isToday ? "Vence hoy" : "Próximo"}
               </Badge>
             ) : null}
-            {showLink ? (
+            {showLink && can("payments:view") ? (
               <Link
                 href={appHref(basePath, "/pagos")}
                 className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-[var(--anasac-navy)] transition hover:bg-[var(--anasac-aqua)]"

@@ -30,7 +30,6 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "calendar:manage",
     "results:view",
     "results:manage",
-    "payments:view",
     "settings:view",
   ],
   nadador: [
@@ -39,7 +38,6 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "competitions:view",
     "calendar:view",
     "results:view",
-    "payments:view",
     "settings:view",
   ],
   asociado: [
@@ -49,7 +47,6 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "competitions:view",
     "calendar:view",
     "results:view",
-    "payments:view",
     "settings:view",
   ],
   contador: [

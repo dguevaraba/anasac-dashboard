@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { BrushCleaning } from "lucide-react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { BrushCleaning, Eye, FileSpreadsheet, FileText, Plus, Wallet } from "lucide-react";
 import { EmptyState } from "@/components/layout/empty-state";
 import { NextPaymentCard } from "@/components/dashboard/next-payment-card";
 import { PaymentsChart } from "@/components/dashboard/charts";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,19 +22,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { appHref, useAppConfig } from "@/lib/app-config";
+import { useAuth } from "@/lib/auth/auth-context";
 import { daysUntil, formatCrc } from "@/lib/mock/analytics";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
+import { ModalExportarPagos } from "@/components/pagos/modal-exportar-pagos";
+import { crearPagoAction } from "./actions";
 
 export type PagoItem = {
   id: string;
   swimmerId: string;
   nadador: string;
+  grupo: string | null;
   concept: string;
   amount: number;
   dueDate: string;
   paidAt: string | null;
   status: "pagado" | "pendiente" | "vencido" | "parcial";
   period: string;
+  invoiceUrl: string | null;
 };
 
 export type NadadorOpcion = { id: string; etiqueta: string };
@@ -84,12 +92,6 @@ function mesAnteriorIso(desde = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function mesAnteriorDe(period: string) {
-  const [y, m] = period.split("-").map(Number);
-  const d = new Date(y, m - 2, 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
 function cobroMesEnCurso(pagos: PagoItem[]) {
   const now = new Date();
   const period = mesActualIso();
@@ -113,24 +115,37 @@ function etiquetaPeriodo(period: string) {
   return `${MESES_CORTO[idx]} ${y.slice(2)}`;
 }
 
-function construirSerieMensual(pagos: PagoItem[]) {
-  const map = new Map<string, { cobrado: number; pendiente: number }>();
+function construirSerieEstados(pagos: PagoItem[]) {
+  const map = new Map<
+    string,
+    { pagado: number; pendiente: number; vencido: number; parcial: number }
+  >();
   for (const p of pagos) {
-    const bucket = map.get(p.period) ?? { cobrado: 0, pendiente: 0 };
-    if (p.status === "pagado") {
-      bucket.cobrado += p.amount;
-    } else {
-      bucket.pendiente += p.amount;
-    }
+    const bucket = map.get(p.period) ?? {
+      pagado: 0,
+      pendiente: 0,
+      vencido: 0,
+      parcial: 0,
+    };
+    if (p.status === "pagado") bucket.pagado += p.amount;
+    else if (p.status === "vencido") bucket.vencido += p.amount;
+    else if (p.status === "parcial") bucket.parcial += p.amount;
+    else bucket.pendiente += p.amount;
     map.set(p.period, bucket);
   }
-  return [...map.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([period, values]) => ({
-      mes: etiquetaPeriodo(period),
-      cobrado: values.cobrado,
-      pendiente: values.pendiente,
-    }));
+  return map;
+}
+
+function restarMeses(period: string, cantidad: number) {
+  const [y, m] = period.split("-").map(Number);
+  const d = new Date(y, m - 1 - cantidad, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function siguienteMes(period: string) {
+  const [y, m] = period.split("-").map(Number);
+  const d = new Date(y, m, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
 export function GestorPagos({
@@ -140,11 +155,53 @@ export function GestorPagos({
   pagos: PagoItem[];
   nadadores: NadadorOpcion[];
 }) {
+  const { can } = useAuth();
+  const { basePath } = useAppConfig();
+  const puedeGestionar = can("payments:manage");
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [errorFormulario, setErrorFormulario] = useState<string | null>(null);
+  const [periodoForm, setPeriodoForm] = useState(mesActualIso);
+  const [estadoForm, setEstadoForm] = useState("pendiente");
+  const [exportFormato, setExportFormato] = useState<"excel" | "pdf" | null>(
+    null,
+  );
+
   const periodoWidgets = useMemo(() => {
     const actual = mesActualIso();
     if (pagos.some((p) => p.period === actual)) return actual;
     return mesAnteriorIso();
   }, [pagos]);
+
+  const vencimientoPorDefecto = useMemo(() => {
+    const [y, m] = periodoForm.split("-");
+    if (!y || !m) return `${mesActualIso()}-15`;
+    return `${periodoForm}-15`;
+  }, [periodoForm]);
+
+  function abrirCrear() {
+    setPeriodoForm(mesActualIso());
+    setEstadoForm("pendiente");
+    setErrorFormulario(null);
+    setMostrarFormulario(true);
+  }
+
+  function cerrarFormulario() {
+    setMostrarFormulario(false);
+    setErrorFormulario(null);
+  }
+
+  async function alEnviar(formData: FormData) {
+    setGuardando(true);
+    setErrorFormulario(null);
+    const resultado = await crearPagoAction(formData);
+    setGuardando(false);
+    if (!resultado.ok) {
+      setErrorFormulario(resultado.error ?? "No se pudo guardar el pago.");
+      return;
+    }
+    cerrarFormulario();
+  }
 
   const proximo = useMemo(() => {
     const corte = cobroMesEnCurso(pagos);
@@ -199,35 +256,44 @@ export function GestorPagos({
   }, [pagos, mesDesde, mesHasta, nadadorId, filtroEstado]);
 
   const chartData = useMemo(() => {
-    let desde = mesDesde <= mesHasta ? mesDesde : mesHasta;
-    let hasta = mesDesde <= mesHasta ? mesHasta : mesDesde;
-    if (desde === hasta) {
-      desde = mesAnteriorDe(desde);
-    }
-    const paraChart = pagos
-      .filter((p) => p.period >= desde && p.period <= hasta)
-      .filter((p) => nadadorId === "todos" || p.swimmerId === nadadorId)
-      .filter((p) => filtroEstado === "todos" || p.status === filtroEstado);
-    const serie = construirSerieMensual(paraChart);
-    if (serie.length >= 2) return serie;
-    // Rellena meses faltantes del rango para que el eje tenga al menos 2 puntos
-    const puntos: { mes: string; cobrado: number; pendiente: number }[] = [];
+    const hasta = mesDesde <= mesHasta ? mesHasta : mesDesde;
+    // Siempre últimos 6 meses del “hasta” del filtro, para poder comparar tendencia
+    const desde = restarMeses(hasta, 5);
+    const porPeriodo = construirSerieEstados(
+      pagos.filter(
+        (p) =>
+          p.period >= desde &&
+          p.period <= hasta &&
+          (nadadorId === "todos" || p.swimmerId === nadadorId),
+      ),
+    );
+    const puntos: {
+      mes: string;
+      pagado: number;
+      pendiente: number;
+      vencido: number;
+      parcial: number;
+      cobertura: number;
+    }[] = [];
     let cursor = desde;
     while (cursor <= hasta) {
-      const existing = serie.find((s) => s.mes === etiquetaPeriodo(cursor));
-      puntos.push(
-        existing ?? {
-          mes: etiquetaPeriodo(cursor),
-          cobrado: 0,
-          pendiente: 0,
-        },
-      );
-      const [y, m] = cursor.split("-").map(Number);
-      const next = new Date(y, m, 1); // m is 1-based → Date(y, m, 1) = first of next month
-      cursor = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
+      const values = porPeriodo.get(cursor) ?? {
+        pagado: 0,
+        pendiente: 0,
+        vencido: 0,
+        parcial: 0,
+      };
+      const total =
+        values.pagado + values.pendiente + values.vencido + values.parcial;
+      puntos.push({
+        mes: etiquetaPeriodo(cursor),
+        ...values,
+        cobertura: total > 0 ? Math.round((values.pagado / total) * 100) : 0,
+      });
+      cursor = siguienteMes(cursor);
     }
     return puntos;
-  }, [pagos, mesDesde, mesHasta, nadadorId, filtroEstado]);
+  }, [pagos, mesDesde, mesHasta, nadadorId]);
 
   const totalVista = useMemo(
     () => filtrados.reduce((s, p) => s + p.amount, 0),
@@ -247,17 +313,174 @@ export function GestorPagos({
     setFiltroEstado("todos");
   }
 
+  if (!can("payments:view")) {
+    notFound();
+  }
+
+  const formulario = mostrarFormulario && puedeGestionar ? (
+    <Card className="mb-4" bubbles bubblePreset="panel">
+      <CardContent className="p-4">
+        <h2 className="mb-3 text-sm font-semibold text-[var(--anasac-navy)]">
+          Nuevo pago
+        </h2>
+        <form
+          key="nuevo-pago"
+          action={alEnviar}
+          className="grid gap-3 md:grid-cols-3"
+        >
+          <div className="space-y-1 md:col-span-2">
+            <Label htmlFor="swimmerId">Nadador</Label>
+            <Select id="swimmerId" name="swimmerId" required defaultValue="">
+              <option value="" disabled>
+                Seleccioná un nadador
+              </option>
+              {nadadores.map((n) => (
+                <option key={n.id} value={n.id}>
+                  {n.etiqueta}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="period">Periodo</Label>
+            <Input
+              id="period"
+              name="period"
+              type="month"
+              required
+              value={periodoForm}
+              onChange={(e) => setPeriodoForm(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1 md:col-span-2">
+            <Label htmlFor="concept">Concepto</Label>
+            <Input
+              id="concept"
+              name="concept"
+              placeholder={`Mensualidad ${periodoForm}`}
+              defaultValue={`Mensualidad ${periodoForm}`}
+              key={`concept-${periodoForm}`}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="amount">Monto (₡)</Label>
+            <Input
+              id="amount"
+              name="amount"
+              type="number"
+              min={0}
+              step={1}
+              required
+              defaultValue={15000}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="dueDate">Vence</Label>
+            <Input
+              id="dueDate"
+              name="dueDate"
+              type="date"
+              required
+              key={`due-${vencimientoPorDefecto}`}
+              defaultValue={vencimientoPorDefecto}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="status">Estado</Label>
+            <Select
+              id="status"
+              name="status"
+              value={estadoForm}
+              onChange={(e) => setEstadoForm(e.target.value)}
+            >
+              <option value="pendiente">Pendiente</option>
+              <option value="pagado">Pagado</option>
+              <option value="vencido">Vencido</option>
+              <option value="parcial">Parcial</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="paidAt">
+              Fecha de pago{estadoForm === "pagado" ? "" : " (opcional)"}
+            </Label>
+            <Input
+              id="paidAt"
+              name="paidAt"
+              type="date"
+              required={estadoForm === "pagado"}
+            />
+          </div>
+          <div className="space-y-1 md:col-span-3">
+            <Label htmlFor="invoice">Factura (opcional)</Label>
+            <Input
+              id="invoice"
+              name="invoice"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+            />
+            <p className="text-xs text-slate-500">
+              JPG, PNG, WEBP o PDF · máximo 10 MB
+            </p>
+          </div>
+          <div className="space-y-1 md:col-span-3">
+            <Label htmlFor="notes">Notas (opcional)</Label>
+            <Input id="notes" name="notes" />
+          </div>
+          <div className="flex items-end gap-2 md:col-span-3">
+            <Button type="submit" disabled={guardando}>
+              {guardando ? "Guardando..." : "Guardar pago"}
+            </Button>
+            <Button type="button" variant="outline" onClick={cerrarFormulario}>
+              Cancelar
+            </Button>
+          </div>
+        </form>
+        {errorFormulario ? (
+          <p className="mt-3 text-sm text-red-600">{errorFormulario}</p>
+        ) : null}
+      </CardContent>
+    </Card>
+  ) : null;
+
   if (pagos.length === 0) {
     return (
-      <EmptyState
-        title="No hay cobros registrados"
-        description="Cuando se carguen mensualidades e inscripciones, el estado de cuentas va a aparecer acá."
-      />
+      <div>
+        <div className="mb-4 flex justify-end">
+          {puedeGestionar ? (
+            <Button type="button" onClick={abrirCrear}>
+              <Plus className="h-4 w-4" />
+              Nuevo pago
+            </Button>
+          ) : null}
+        </div>
+        {formulario}
+        {!mostrarFormulario ? (
+          <EmptyState
+            title="No hay cobros registrados"
+            description={
+              puedeGestionar
+                ? "Usá «Nuevo pago» para registrar la primera mensualidad."
+                : "Cuando se carguen mensualidades e inscripciones, el estado de cuentas va a aparecer acá."
+            }
+          />
+        ) : null}
+      </div>
     );
   }
 
   return (
     <div>
+      <div className="mb-4 flex justify-end">
+        {puedeGestionar ? (
+          <Button type="button" onClick={abrirCrear}>
+            <Plus className="h-4 w-4" />
+            Nuevo pago
+          </Button>
+        ) : null}
+      </div>
+
+      {formulario}
+
       <div className="mb-4 grid gap-3 lg:grid-cols-12 lg:items-stretch">
         <div className="lg:col-span-3">
           <NextPaymentCard
@@ -300,7 +523,7 @@ export function GestorPagos({
           className="lg:col-span-7"
           compact
           data={chartData}
-          subtitle=""
+          subtitle="Últimos 6 meses · barras = montos · línea = % cobrado"
         />
       </div>
 
@@ -369,6 +592,20 @@ export function GestorPagos({
               <BrushCleaning className="h-4 w-4" />
             </Button>
           ) : null}
+          <div className="flex flex-wrap gap-2 md:ml-auto">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setExportFormato("excel")}
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Excel
+            </Button>
+            <Button type="button" onClick={() => setExportFormato("pdf")}>
+              <FileText className="h-4 w-4" />
+              PDF
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -385,6 +622,10 @@ export function GestorPagos({
                 <TableHead>Vence</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Pagado</TableHead>
+                <TableHead>Factura</TableHead>
+                <TableHead className="w-20 text-center">
+                  <span className="sr-only">Acciones</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -408,6 +649,46 @@ export function GestorPagos({
                   <TableCell>
                     {p.paidAt ? formatDate(p.paidAt) : "—"}
                   </TableCell>
+                  <TableCell>
+                    {p.invoiceUrl ? (
+                      <a
+                        href={p.invoiceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-[var(--anasac-teal)] underline-offset-2 hover:underline"
+                      >
+                        Ver
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center gap-0.5">
+                      <Link
+                        href={appHref(basePath, `/pagos/nadador/${p.swimmerId}`)}
+                        className={cn(
+                          buttonVariants({ variant: "ghost", size: "icon" }),
+                          "h-8 w-8",
+                        )}
+                        aria-label={`Ver cuenta de pagos de ${p.nadador}`}
+                        title="Cuenta del nadador"
+                      >
+                        <Wallet className="h-4 w-4" />
+                      </Link>
+                      <Link
+                        href={appHref(basePath, `/pagos/${p.id}`)}
+                        className={cn(
+                          buttonVariants({ variant: "ghost", size: "icon" }),
+                          "h-8 w-8",
+                        )}
+                        aria-label={`Ver pago de ${p.nadador}`}
+                        title="Detalle del pago"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Link>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -423,7 +704,7 @@ export function GestorPagos({
                   <TableCell className="font-semibold text-[var(--anasac-navy)]">
                     {formatCrc(totalVista)}
                   </TableCell>
-                  <TableCell colSpan={3} />
+                  <TableCell colSpan={5} />
                 </TableRow>
               </TableFooter>
             ) : null}
@@ -435,6 +716,35 @@ export function GestorPagos({
           ) : null}
         </CardContent>
       </Card>
+
+      <ModalExportarPagos
+        abierto={exportFormato !== null}
+        formato={exportFormato}
+        onClose={() => setExportFormato(null)}
+        pagos={pagos.map((p) => ({
+          id: p.id,
+          swimmerId: p.swimmerId,
+          nadador: p.nadador,
+          grupo: p.grupo,
+          concept: p.concept,
+          amount: p.amount,
+          dueDate: p.dueDate,
+          paidAt: p.paidAt,
+          status: p.status,
+          period: p.period,
+        }))}
+        filtrosBase={{
+          mesDesde,
+          mesHasta,
+          nadadorId,
+          estado: filtroEstado,
+        }}
+        etiquetaNadador={
+          nadadorId === "todos"
+            ? undefined
+            : nadadores.find((n) => n.id === nadadorId)?.etiqueta
+        }
+      />
     </div>
   );
 }

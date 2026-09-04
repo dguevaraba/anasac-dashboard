@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Eye, Plus, Search, User, BrushCleaning } from "lucide-react";
+import { Eye, Plus, Search, User, BrushCleaning, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
 import { Badge } from "@/components/ui/badge";
@@ -117,6 +117,7 @@ export function GestorNadadores({
   const { can, user } = useAuth();
   const { basePath } = useAppConfig();
   const puedeGestionar = can("swimmers:manage");
+  const puedeVerPagos = can("payments:view");
   const puedeVerEstado = user?.role !== "asociado";
   const [consulta, setConsulta] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("todos");
@@ -535,7 +536,7 @@ export function GestorNadadores({
                       </TableCell>
                     ) : null}
                     <TableCell className="text-center">
-                      <div className="flex items-center justify-center">
+                      <div className="flex items-center justify-center gap-0.5">
                         <Link
                           href={appHref(basePath, `/nadadores/${n.id}`)}
                           className={cn(
@@ -543,9 +544,26 @@ export function GestorNadadores({
                             "h-8 w-8",
                           )}
                           aria-label={`Ver ficha de ${n.nombre} ${n.apellido}`}
+                          title="Ficha del nadador"
                         >
                           <Eye className="h-4 w-4" />
                         </Link>
+                        {puedeVerPagos ? (
+                          <Link
+                            href={appHref(
+                              basePath,
+                              `/pagos/nadador/${n.id}`,
+                            )}
+                            className={cn(
+                              buttonVariants({ variant: "ghost", size: "icon" }),
+                              "h-8 w-8",
+                            )}
+                            aria-label={`Ver pagos de ${n.nombre} ${n.apellido}`}
+                            title="Cuenta de pagos"
+                          >
+                            <Wallet className="h-4 w-4" />
+                          </Link>
+                        ) : null}
                       </div>
                     </TableCell>
                   </TableRow>
