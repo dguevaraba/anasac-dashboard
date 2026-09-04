@@ -30,9 +30,11 @@ export default function SwimmersScreen() {
                 tone={
                   s.status === "activo"
                     ? "success"
-                    : s.status === "lesionado"
+                    : s.status === "moroso"
                       ? "warning"
-                      : "muted"
+                      : s.status === "becado"
+                        ? "default"
+                        : "danger"
                 }
               />
             </View>

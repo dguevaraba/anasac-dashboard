@@ -106,13 +106,16 @@ export function LiveAuthProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured()) {
       return { ok: false, error: "Supabase no está configurado." };
     }
+    // Guardar destino en cookie (no en la URL). Si el redirectTo lleva ?next=...,
+    // Supabase a veces no lo matchea y cae al Site URL de producción.
+    const destination = next || "/dashboard";
+    document.cookie = `anasac_oauth_next=${encodeURIComponent(destination)}; path=/; max-age=600; SameSite=Lax`;
     const supabase = createBrowserSupabase();
-    const redirectTo = new URL("/auth/callback", window.location.origin);
-    redirectTo.searchParams.set("next", next || "/dashboard");
+    const redirectTo = `${window.location.origin}/auth/callback`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: redirectTo.toString(),
+        redirectTo,
         queryParams: { access_type: "offline", prompt: "select_account" },
       },
     });

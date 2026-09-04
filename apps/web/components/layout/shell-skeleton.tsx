@@ -1,5 +1,29 @@
+"use client";
+
+import { usePathname } from "next/navigation";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
+import { FichaNadadorSkeleton } from "@/components/nadadores/ficha-nadador-skeleton";
+import { NadadoresSkeleton } from "@/components/nadadores/nadadores-skeleton";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAppConfig } from "@/lib/app-config";
+
+function ContenidoSkeleton() {
+  const pathname = usePathname();
+  const { basePath } = useAppConfig();
+  const path = basePath && pathname.startsWith(basePath)
+    ? pathname.slice(basePath.length) || "/"
+    : pathname;
+
+  if (path === "/nadadores") {
+    return <NadadoresSkeleton />;
+  }
+
+  if (path.startsWith("/nadadores/")) {
+    return <FichaNadadorSkeleton />;
+  }
+
+  return <DashboardSkeleton />;
+}
 
 export function ShellSkeleton() {
   return (
@@ -43,7 +67,7 @@ export function ShellSkeleton() {
           </div>
         </header>
         <main className="flex-1 px-4 py-6 md:px-6 lg:px-8">
-          <DashboardSkeleton />
+          <ContenidoSkeleton />
         </main>
       </div>
       <span className="sr-only">Cargando panel</span>

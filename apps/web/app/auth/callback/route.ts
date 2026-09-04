@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
@@ -7,23 +7,44 @@ import {
   safeNextPath,
 } from "@/lib/auth/ensure-access";
 
-export async function GET(request: Request) {
+const OAUTH_NEXT_COOKIE = "anasac_oauth_next";
+
+export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = safeNextPath(searchParams.get("next"));
+  const nextFromQuery = searchParams.get("next");
+  const nextFromCookie = request.cookies.get(OAUTH_NEXT_COOKIE)?.value;
+  const next = safeNextPath(
+    nextFromQuery ??
+      (nextFromCookie ? decodeURIComponent(nextFromCookie) : null),
+  );
+
+  function clearNextCookie(response: NextResponse) {
+    response.cookies.set(OAUTH_NEXT_COOKIE, "", {
+      path: "/",
+      maxAge: 0,
+    });
+    return response;
+  }
 
   if (!isSupabaseConfigured()) {
-    return NextResponse.redirect(`${origin}/login?error=config`);
+    return clearNextCookie(
+      NextResponse.redirect(`${origin}/login?error=config`),
+    );
   }
 
   if (!code) {
-    return NextResponse.redirect(`${origin}/login?error=oauth`);
+    return clearNextCookie(
+      NextResponse.redirect(`${origin}/login?error=oauth`),
+    );
   }
 
   const supabase = await createServerSupabase();
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
-    return NextResponse.redirect(`${origin}/login?error=oauth`);
+    return clearNextCookie(
+      NextResponse.redirect(`${origin}/login?error=oauth`),
+    );
   }
 
   const {
@@ -31,7 +52,9 @@ export async function GET(request: Request) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.redirect(`${origin}/login?error=oauth`);
+    return clearNextCookie(
+      NextResponse.redirect(`${origin}/login?error=oauth`),
+    );
   }
 
   const access = await ensureAccessAfterLogin({
@@ -42,18 +65,24 @@ export async function GET(request: Request) {
 
   if (access.status === "ok") {
     const destination = inviteTokenFromNext(next) ? "/dashboard" : next;
-    return NextResponse.redirect(`${origin}${destination}`);
+    return clearNextCookie(NextResponse.redirect(`${origin}${destination}`));
   }
 
   await supabase.auth.signOut();
 
   if (access.status === "inactive") {
-    return NextResponse.redirect(`${origin}/login?error=inactivo`);
+    return clearNextCookie(
+      NextResponse.redirect(`${origin}/login?error=inactivo`),
+    );
   }
 
   if (inviteTokenFromNext(next)) {
-    return NextResponse.redirect(`${origin}${next}?error=invitacion`);
+    return clearNextCookie(
+      NextResponse.redirect(`${origin}${next}?error=invitacion`),
+    );
   }
 
-  return NextResponse.redirect(`${origin}/login?error=sin_invitacion`);
+  return clearNextCookie(
+    NextResponse.redirect(`${origin}/login?error=sin_invitacion`),
+  );
 }

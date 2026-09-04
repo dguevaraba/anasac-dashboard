@@ -23,7 +23,6 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   entrenador: [
     "dashboard:view",
     "swimmers:view",
-    "swimmers:manage",
     "coaches:view",
     "competitions:view",
     "competitions:manage",
@@ -56,6 +55,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   contador: [
     "dashboard:view",
     "swimmers:view",
+    "swimmers:manage",
     "payments:view",
     "payments:manage",
     "settings:view",

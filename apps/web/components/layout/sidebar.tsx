@@ -30,8 +30,8 @@ const NAV_ITEMS: {
   icon: ComponentType<{ className?: string }>;
   permission: Permission;
 }[] = [
-  { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "dashboard:view" },
-  { path: "/swimmers", label: "Nadadores", icon: Waves, permission: "swimmers:view" },
+  { path: "/dashboard", label: "Inicio", icon: LayoutDashboard, permission: "dashboard:view" },
+  { path: "/nadadores", label: "Nadadores", icon: Waves, permission: "swimmers:view" },
   { path: "/coaches", label: "Entrenadores", icon: UserRound, permission: "coaches:view" },
   { path: "/competitions", label: "Competencias", icon: Trophy, permission: "competitions:view" },
   { path: "/calendar", label: "Calendario", icon: CalendarDays, permission: "calendar:view" },

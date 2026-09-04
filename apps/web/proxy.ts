@@ -4,6 +4,7 @@ import { getSupabaseEnv, isSupabaseConfigured } from "@/lib/supabase/config";
 
 const PROTECTED = [
   "/dashboard",
+  "/nadadores",
   "/swimmers",
   "/coaches",
   "/competitions",

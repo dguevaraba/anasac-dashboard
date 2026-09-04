@@ -67,12 +67,17 @@ export interface Swimmer {
   documentId?: string;
   birthDate: string;
   gender: "masculino" | "femenino" | "otro";
-  categoryId: string;
-  teamId: string;
+  bloodType?: "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "O+" | "O-";
+  categoryId?: string;
+  teamId?: string;
   coachId?: string;
   email?: string;
   phone?: string;
-  status: "activo" | "inactivo" | "lesionado";
+  guardianPhone?: string;
+  photoUrl?: string;
+  joinDate?: string;
+  paymentDay?: number;
+  status: "activo" | "inactivo" | "moroso" | "becado";
   createdAt: string;
   updatedAt: string;
 }

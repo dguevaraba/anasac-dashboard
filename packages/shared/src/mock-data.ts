@@ -165,7 +165,7 @@ export const swimmers: Swimmer[] = [
     categoryId: "cat-5",
     teamId: "team-1",
     coachId: "coach-1",
-    status: "lesionado",
+    status: "moroso",
     createdAt: "2025-05-20T12:00:00.000Z",
     updatedAt: "2026-08-10T12:00:00.000Z",
   },

@@ -33,7 +33,7 @@ export default async function DashboardPage() {
   return (
     <div>
       <PageHeader
-        title={firstName ? `Hola, ${firstName}` : "Dashboard"}
+        title={firstName ? `Hola, ${firstName}` : "Inicio"}
         description="Resumen operativo de ANASAC."
       />
 
