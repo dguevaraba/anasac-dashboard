@@ -8,80 +8,148 @@ import {
   formatCrc,
   getNextInstitutionalPayment,
 } from "@/lib/mock/analytics";
-import { formatDate } from "@/lib/utils";
+import { formatDate, cn } from "@/lib/utils";
 import { appHref, useAppConfig } from "@/lib/app-config";
 
-export function NextPaymentCard() {
-  const next = getNextInstitutionalPayment();
+export type NextPaymentCardProps = {
+  next?: {
+    dueDate: string;
+    daysRemaining: number;
+    pendingAmount: number;
+    pendingCount: number;
+  };
+  /** Ej. "Mensualidad" */
+  title?: string;
+  /** Ej. "Septiembre 2026" */
+  monthLabel?: string;
+  compact?: boolean;
+  showLink?: boolean;
+  /** Si false, no muestra badge Vencido/Próximo */
+  showBadge?: boolean;
+};
+
+export function NextPaymentCard({
+  next,
+  title = "Mensualidad institucional",
+  monthLabel,
+  compact = false,
+  showLink = true,
+  showBadge = true,
+  className,
+}: NextPaymentCardProps & { className?: string }) {
+  const data = next ?? getNextInstitutionalPayment();
   const { basePath } = useAppConfig();
-  const isOverdue = next.daysRemaining < 0;
-  const isToday = next.daysRemaining === 0;
+  const isOverdue = data.daysRemaining < 0;
+  const isToday = data.daysRemaining === 0;
+  const showFooter = showBadge || showLink;
+  const eyebrow = monthLabel ? title : "Próximo cobro";
+  const heading = monthLabel ?? title;
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-[var(--anasac-border)] bg-[linear-gradient(145deg,#0f2c3d_0%,#2e768d_70%,#1a7a72_120%)] p-5 text-white shadow-[0_12px_32px_rgba(15,44,61,0.25)]">
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-2xl border border-[var(--anasac-border)] bg-[linear-gradient(145deg,#0f2c3d_0%,#2e768d_70%,#1a7a72_120%)] text-white shadow-[0_12px_32px_rgba(15,44,61,0.25)]",
+        compact ? "p-4" : "p-5",
+        className,
+      )}
+    >
       <Bubbles preset="hero" />
-      <div className="relative z-[1]">
+      <div className="relative z-[1] flex h-full flex-col justify-between gap-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--anasac-aqua)]">
-              Próximo cobro
+              {eyebrow}
             </p>
-            <h3 className="mt-2 font-[family-name:var(--font-display)] text-xl font-bold">
-              Mensualidad institucional
+            <h3
+              className={cn(
+                "font-[family-name:var(--font-display)] font-bold",
+                compact ? "mt-1 text-lg" : "mt-2 text-2xl",
+              )}
+            >
+              {heading}
             </h3>
-            <p className="mt-1 text-sm text-white/75">
-              Fecha límite: {formatDate(next.dueDate)}
+            <p className={cn("text-white/75", compact ? "mt-0.5 text-xs" : "mt-1 text-sm")}>
+              Fecha límite: {formatDate(data.dueDate)}
             </p>
           </div>
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 text-[var(--anasac-aqua)]">
-            <CreditCard className="h-5 w-5" />
+          <div
+            className={cn(
+              "flex items-center justify-center rounded-xl bg-white/10 text-[var(--anasac-aqua)]",
+              compact ? "h-9 w-9" : "h-11 w-11",
+            )}
+          >
+            <CreditCard className={compact ? "h-4 w-4" : "h-5 w-5"} />
           </div>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <div className="relative overflow-hidden rounded-xl bg-white/10 px-4 py-3 backdrop-blur-sm">
-            <span className="absolute -right-3 -top-3 h-12 w-12 rounded-full bg-[var(--anasac-aqua)]/20" />
-            <p className="text-[11px] uppercase tracking-wide text-white/60">
+        <div className={cn("grid grid-cols-2 gap-2", compact ? "mt-3" : "mt-5 gap-3")}>
+          <div
+            className={cn(
+              "relative overflow-hidden rounded-xl bg-white/10 backdrop-blur-sm",
+              compact ? "px-3 py-2" : "px-4 py-3",
+            )}
+          >
+            <p className="text-[10px] uppercase tracking-wide text-white/60">
               Días restantes
             </p>
-            <p className="mt-1 font-[family-name:var(--font-display)] text-4xl font-bold text-[var(--anasac-aqua)]">
-              {isOverdue ? Math.abs(next.daysRemaining) : next.daysRemaining}
+            <p
+              className={cn(
+                "font-[family-name:var(--font-display)] font-bold text-[var(--anasac-aqua)]",
+                compact ? "mt-0.5 text-2xl" : "mt-1 text-4xl",
+              )}
+            >
+              {isOverdue ? Math.abs(data.daysRemaining) : data.daysRemaining}
             </p>
-            <p className="text-xs text-white/70">
+            <p className="text-[11px] text-white/70">
               {isOverdue
                 ? "días de atraso"
                 : isToday
                   ? "vence hoy"
-                  : next.daysRemaining === 1
+                  : data.daysRemaining === 1
                     ? "día"
                     : "días"}
             </p>
           </div>
-          <div className="relative overflow-hidden rounded-xl bg-white/10 px-4 py-3 backdrop-blur-sm">
-            <span className="absolute -right-3 -top-3 h-12 w-12 rounded-full bg-white/10" />
-            <p className="text-[11px] uppercase tracking-wide text-white/60">
-              Pendiente
+          <div
+            className={cn(
+              "relative overflow-hidden rounded-xl bg-white/10 backdrop-blur-sm",
+              compact ? "px-3 py-2" : "px-4 py-3",
+            )}
+          >
+            <p className="text-[10px] uppercase tracking-wide text-white/60">
+              Pendientes
             </p>
-            <p className="mt-1 font-[family-name:var(--font-display)] text-lg font-bold">
-              {formatCrc(next.pendingAmount)}
+            <p
+              className={cn(
+                "font-[family-name:var(--font-display)] font-bold",
+                compact ? "mt-0.5 text-base" : "mt-1 text-lg",
+              )}
+            >
+              {formatCrc(data.pendingAmount)}
             </p>
-            <p className="text-xs text-white/70">
-              {next.pendingCount} cuota{next.pendingCount === 1 ? "" : "s"}
+            <p className="text-[11px] text-white/70">
+              {data.pendingCount} cuota{data.pendingCount === 1 ? "" : "s"}
             </p>
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Badge className="bg-white/15 text-white hover:bg-white/20">
-            {isOverdue ? "Vencido" : isToday ? "Vence hoy" : "Próximo"}
-          </Badge>
-          <Link
-            href={appHref(basePath, "/payments")}
-            className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-[var(--anasac-navy)] transition hover:bg-[var(--anasac-aqua)]"
-          >
-            Ver pagos
-          </Link>
-        </div>
+        {showFooter ? (
+          <div className={cn("flex flex-wrap items-center gap-2", compact ? "mt-3" : "mt-4")}>
+            {showBadge ? (
+              <Badge className="bg-white/15 text-white hover:bg-white/20">
+                {isToday ? "Vence hoy" : "Próximo"}
+              </Badge>
+            ) : null}
+            {showLink ? (
+              <Link
+                href={appHref(basePath, "/pagos")}
+                className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-[var(--anasac-navy)] transition hover:bg-[var(--anasac-aqua)]"
+              >
+                Ver pagos
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </div>
   );

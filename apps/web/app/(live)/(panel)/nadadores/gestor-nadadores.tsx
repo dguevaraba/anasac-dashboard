@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Eye, Plus, Search, User } from "lucide-react";
+import { Eye, Plus, Search, User, BrushCleaning } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
 import { Badge } from "@/components/ui/badge";
@@ -15,12 +15,17 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { appHref, useAppConfig } from "@/lib/app-config";
 import { useAuth } from "@/lib/auth/auth-context";
+import {
+  GRUPOS_NADADOR,
+  GRUPO_DEFAULT,
+} from "@/lib/nadadores/grupos";
 import { formatDate, getAge, cn } from "@/lib/utils";
 import {
   crearNadadorAction,
@@ -31,7 +36,7 @@ export type NadadorItem = {
   nombre: string;
   apellido: string;
   cedula: string | null;
-  fechaNacimiento: string;
+  fechaNacimiento: string | null;
   genero: string;
   correo: string | null;
   telefono: string | null;
@@ -40,9 +45,10 @@ export type NadadorItem = {
   fotoUrl: string | null;
   fechaIngreso: string | null;
   diaPago: number | null;
-  estado: "activo" | "inactivo" | "moroso" | "becado";
+  estado: "activo" | "inactivo" | "pendiente" | "becado";
   categoriaId: string | null;
   entrenadorId: string | null;
+  grupo: string | null;
   categoriaNombre: string | null;
   entrenadorNombre: string | null;
   creadoEn: string;
@@ -59,7 +65,7 @@ function hoyIso() {
 export const VARIANTE_ESTADO = {
   activo: "success",
   inactivo: "danger",
-  moroso: "warning",
+  pendiente: "warning",
   becado: "default",
 } as const;
 
@@ -113,6 +119,8 @@ export function GestorNadadores({
   const puedeVerEstado = user?.role !== "asociado";
   const [consulta, setConsulta] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("todos");
+  const [filtroCategoria, setFiltroCategoria] = useState("todas");
+  const [filtroGrupo, setFiltroGrupo] = useState(GRUPO_DEFAULT);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [errorFormulario, setErrorFormulario] = useState<string | null>(null);
@@ -129,9 +137,43 @@ export function GestorNadadores({
         !puedeVerEstado ||
         filtroEstado === "todos" ||
         n.estado === filtroEstado;
-      return coincideConsulta && coincideEstado;
+      const coincideCategoria =
+        filtroCategoria === "todas" || n.categoriaId === filtroCategoria;
+      const coincideGrupo =
+        filtroGrupo === "todos" || n.grupo === filtroGrupo;
+      return (
+        coincideConsulta &&
+        coincideEstado &&
+        coincideCategoria &&
+        coincideGrupo
+      );
     });
-  }, [nadadores, consulta, filtroEstado, puedeVerEstado]);
+  }, [
+    nadadores,
+    consulta,
+    filtroEstado,
+    filtroCategoria,
+    filtroGrupo,
+    puedeVerEstado,
+  ]);
+
+  const totalVista = filtrados.length;
+
+  const columnasExtra =
+    (puedeGestionar ? 3 : 0) + (puedeVerEstado ? 1 : 0);
+
+  const filtrosActivos =
+    consulta.trim() !== "" ||
+    filtroCategoria !== "todas" ||
+    filtroGrupo !== GRUPO_DEFAULT ||
+    (puedeVerEstado && filtroEstado !== "todos");
+
+  function limpiarFiltros() {
+    setConsulta("");
+    setFiltroEstado("todos");
+    setFiltroCategoria("todas");
+    setFiltroGrupo(GRUPO_DEFAULT);
+  }
 
   function abrirCrear() {
     setVistaPreviaFoto(null);
@@ -181,8 +223,8 @@ export function GestorNadadores({
       />
 
       <Card className="mb-4" bubbles bubblePreset="card">
-        <CardContent className="flex flex-col gap-3 p-4 md:flex-row md:items-center">
-          <div className="relative flex-1">
+        <CardContent className="flex flex-col gap-3 p-4 md:flex-row md:flex-wrap md:items-center">
+          <div className="relative min-w-[200px] flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
               className="pl-9"
@@ -191,6 +233,32 @@ export function GestorNadadores({
               onChange={(e) => setConsulta(e.target.value)}
             />
           </div>
+          <Select
+            className="md:w-52"
+            value={filtroGrupo}
+            onChange={(e) => setFiltroGrupo(e.target.value)}
+            aria-label="Filtrar por grupo"
+          >
+            <option value="todos">Todos los grupos</option>
+            {GRUPOS_NADADOR.map((grupo) => (
+              <option key={grupo} value={grupo}>
+                {grupo}
+              </option>
+            ))}
+          </Select>
+          <Select
+            className="md:w-48"
+            value={filtroCategoria}
+            onChange={(e) => setFiltroCategoria(e.target.value)}
+            aria-label="Filtrar por categoría"
+          >
+            <option value="todas">Todas las categorías</option>
+            {categorias.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.etiqueta}
+              </option>
+            ))}
+          </Select>
           {puedeVerEstado ? (
             <Select
               className="md:w-48"
@@ -200,9 +268,22 @@ export function GestorNadadores({
               <option value="todos">Todos los estados</option>
               <option value="activo">Activo</option>
               <option value="inactivo">Inactivo</option>
-              <option value="moroso">Moroso</option>
+              <option value="pendiente">Pendiente</option>
               <option value="becado">Becado</option>
             </Select>
+          ) : null}
+          {filtrosActivos ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 shrink-0 text-slate-500"
+              onClick={limpiarFiltros}
+              aria-label="Limpiar filtros"
+              title="Limpiar filtros"
+            >
+              <BrushCleaning className="h-4 w-4" />
+            </Button>
           ) : null}
         </CardContent>
       </Card>
@@ -250,8 +331,8 @@ export function GestorNadadores({
                 <Input id="lastName" name="lastName" required />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="birthDate">Fecha de nacimiento</Label>
-                <Input id="birthDate" name="birthDate" type="date" required />
+                <Label htmlFor="birthDate">Fecha de nacimiento (opcional)</Label>
+                <Input id="birthDate" name="birthDate" type="date" />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="gender">Género</Label>
@@ -270,7 +351,7 @@ export function GestorNadadores({
                 <Select id="status" name="status" defaultValue="activo">
                   <option value="activo">Activo</option>
                   <option value="inactivo">Inactivo</option>
-                  <option value="moroso">Moroso</option>
+                  <option value="pendiente">Pendiente</option>
                   <option value="becado">Becado</option>
                 </Select>
               </div>
@@ -281,6 +362,21 @@ export function GestorNadadores({
                   {categorias.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.etiqueta}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="trainingGroup">Grupo</Label>
+                <Select
+                  id="trainingGroup"
+                  name="trainingGroup"
+                  defaultValue={GRUPO_DEFAULT}
+                >
+                  <option value="">Sin grupo</option>
+                  {GRUPOS_NADADOR.map((grupo) => (
+                    <option key={grupo} value={grupo}>
+                      {grupo}
                     </option>
                   ))}
                 </Select>
@@ -370,8 +466,10 @@ export function GestorNadadores({
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12 text-center">#</TableHead>
                   <TableHead>Nadador</TableHead>
                   <TableHead>Edad</TableHead>
+                  <TableHead>Grupo</TableHead>
                   <TableHead>Categoría</TableHead>
                   {puedeGestionar ? (
                     <>
@@ -385,8 +483,11 @@ export function GestorNadadores({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtrados.map((n) => (
+                {filtrados.map((n, index) => (
                   <TableRow key={n.id}>
+                    <TableCell className="text-center text-slate-500">
+                      {index + 1}
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <AvatarNadador
@@ -405,7 +506,10 @@ export function GestorNadadores({
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{getAge(n.fechaNacimiento)}</TableCell>
+                    <TableCell>
+                      {n.fechaNacimiento ? getAge(n.fechaNacimiento) : "—"}
+                    </TableCell>
+                    <TableCell>{n.grupo ?? "—"}</TableCell>
                     <TableCell>{n.categoriaNombre ?? "—"}</TableCell>
                     {puedeGestionar ? (
                       <>
@@ -442,6 +546,21 @@ export function GestorNadadores({
                   </TableRow>
                 ))}
               </TableBody>
+              {filtrados.length > 0 ? (
+                <TableFooter>
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell className="text-center font-semibold text-[var(--anasac-navy)]">
+                      {totalVista}
+                    </TableCell>
+                    <TableCell
+                      colSpan={5 + columnasExtra}
+                      className="font-semibold text-[var(--anasac-navy)]"
+                    >
+                      Total
+                    </TableCell>
+                  </TableRow>
+                </TableFooter>
+              ) : null}
             </Table>
             {filtrados.length === 0 ? (
               <p className="p-6 text-center text-sm text-slate-500">

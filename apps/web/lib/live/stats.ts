@@ -31,7 +31,7 @@ export async function getLiveDashboardStats() {
       supabase
         .from("swimmers")
         .select("id", { count: "exact", head: true })
-        .eq("status", "activo")
+        .neq("status", "inactivo")
         .then((r) => r.count ?? 0),
       countRows("competitions"),
       supabase

@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { appHref, useAppConfig } from "@/lib/app-config";
 import { useAuth } from "@/lib/auth/auth-context";
+import { GRUPOS_NADADOR, GRUPO_DEFAULT } from "@/lib/nadadores/grupos";
 import { cn, formatDate, getAge } from "@/lib/utils";
 import {
   actualizarEstadoNadadorAction,
@@ -151,8 +152,9 @@ export function FichaNadador({
               <p className="font-semibold text-[var(--anasac-navy)]">
                 {nadador.nombre} {nadador.apellido}
               </p>
-              <p className="mt-1 text-sm capitalize text-slate-500">
-                {nadador.genero}
+              <p className="mt-1 text-sm text-slate-500">
+                <span className="capitalize">{nadador.genero}</span>
+                {nadador.grupo ? ` · ${nadador.grupo}` : ""}
                 {nadador.categoriaNombre ? ` · ${nadador.categoriaNombre}` : ""}
               </p>
             </div>
@@ -164,12 +166,24 @@ export function FichaNadador({
 
         <Card>
           <CardContent className="grid gap-5 p-5 sm:grid-cols-2 lg:grid-cols-3">
-            <Dato etiqueta="Edad" valor={`${getAge(nadador.fechaNacimiento)} años`} />
+            <Dato
+              etiqueta="Edad"
+              valor={
+                nadador.fechaNacimiento
+                  ? `${getAge(nadador.fechaNacimiento)} años`
+                  : "—"
+              }
+            />
             <Dato
               etiqueta="Nacimiento"
-              valor={formatDate(nadador.fechaNacimiento)}
+              valor={
+                nadador.fechaNacimiento
+                  ? formatDate(nadador.fechaNacimiento)
+                  : "—"
+              }
             />
             <Dato etiqueta="Tipo de sangre" valor={nadador.tipoSangre ?? "—"} />
+            <Dato etiqueta="Grupo" valor={nadador.grupo ?? "—"} />
             <Dato
               etiqueta="Entrenador"
               valor={nadador.entrenadorNombre ?? "—"}
@@ -256,13 +270,12 @@ export function FichaNadador({
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="birthDate">Fecha de nacimiento</Label>
+                <Label htmlFor="birthDate">Fecha de nacimiento (opcional)</Label>
                 <Input
                   id="birthDate"
                   name="birthDate"
                   type="date"
-                  required
-                  defaultValue={nadador.fechaNacimiento}
+                  defaultValue={nadador.fechaNacimiento ?? ""}
                 />
               </div>
               <div className="space-y-1">
@@ -286,7 +299,7 @@ export function FichaNadador({
                 <Select id="status" name="status" defaultValue={nadador.estado}>
                   <option value="activo">Activo</option>
                   <option value="inactivo">Inactivo</option>
-                  <option value="moroso">Moroso</option>
+                  <option value="pendiente">Pendiente</option>
                   <option value="becado">Becado</option>
                 </Select>
               </div>
@@ -301,6 +314,21 @@ export function FichaNadador({
                   {categorias.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.etiqueta}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="trainingGroup">Grupo</Label>
+                <Select
+                  id="trainingGroup"
+                  name="trainingGroup"
+                  defaultValue={nadador.grupo ?? GRUPO_DEFAULT}
+                >
+                  <option value="">Sin grupo</option>
+                  {GRUPOS_NADADOR.map((grupo) => (
+                    <option key={grupo} value={grupo}>
+                      {grupo}
                     </option>
                   ))}
                 </Select>

@@ -10,7 +10,7 @@ const PROTECTED = [
   "/competitions",
   "/calendar",
   "/results",
-  "/payments",
+  "/pagos",
   "/users",
   "/settings",
   "/profile",

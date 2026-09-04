@@ -36,7 +36,7 @@ const NAV_ITEMS: {
   { path: "/competitions", label: "Competencias", icon: Trophy, permission: "competitions:view" },
   { path: "/calendar", label: "Calendario", icon: CalendarDays, permission: "calendar:view" },
   { path: "/results", label: "Resultados", icon: ClipboardList, permission: "results:view" },
-  { path: "/payments", label: "Pagos", icon: CreditCard, permission: "payments:view" },
+  { path: "/pagos", label: "Pagos", icon: CreditCard, permission: "payments:view" },
   { path: "/users", label: "Usuarios", icon: Users, permission: "users:view" },
   { path: "/settings", label: "Configuración", icon: Settings, permission: "settings:view" },
 ];

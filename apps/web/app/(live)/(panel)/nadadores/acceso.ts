@@ -18,4 +18,4 @@ export async function rolActualNadadores() {
 
 /** Literal fijo para el client tipado de Supabase. */
 export const SELECT_NADADOR =
-  "id, first_name, last_name, document_id, birth_date, gender, email, phone, guardian_phone, blood_type, photo_url, join_date, payment_day, status, category_id, coach_id, created_at, categories(name), coaches(full_name)" as const;
+  "id, first_name, last_name, document_id, birth_date, gender, email, phone, guardian_phone, blood_type, photo_url, join_date, payment_day, status, category_id, coach_id, training_group, created_at, categories(name), coaches(full_name)" as const;

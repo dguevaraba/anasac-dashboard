@@ -31,6 +31,21 @@ export function TableBody({
   );
 }
 
+export function TableFooter({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLTableSectionElement>) {
+  return (
+    <tfoot
+      className={cn(
+        "border-t border-[var(--anasac-border)] bg-[var(--anasac-mist)]/50 font-medium",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
 export function TableRow({
   className,
   ...props

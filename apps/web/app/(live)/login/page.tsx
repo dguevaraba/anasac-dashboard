@@ -186,6 +186,7 @@ function LoginForm() {
             <div className="mt-8 space-y-3">
               <Button
                 type="button"
+                variant="outline"
                 className="w-full gap-2"
                 disabled={!configured || oauthLoading !== null}
                 onClick={() => void onOAuth("google")}

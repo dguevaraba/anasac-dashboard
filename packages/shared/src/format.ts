@@ -1,10 +1,18 @@
 export function formatDate(value: string, options?: Intl.DateTimeFormatOptions) {
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.slice(0, 10));
+  const date = dateOnly
+    ? new Date(
+        Number(dateOnly[1]),
+        Number(dateOnly[2]) - 1,
+        Number(dateOnly[3]),
+      )
+    : new Date(value);
   return new Intl.DateTimeFormat("es-CR", {
     day: "2-digit",
     month: "short",
     year: "numeric",
     ...options,
-  }).format(new Date(value));
+  }).format(date);
 }
 
 export function formatDateTime(value: string) {

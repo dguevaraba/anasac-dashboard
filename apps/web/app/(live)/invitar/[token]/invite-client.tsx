@@ -7,6 +7,29 @@ import { Bubbles } from "@/components/ui/bubbles";
 import { useAuth } from "@/lib/auth/auth-context";
 import { ROLE_LABELS } from "@/lib/auth/permissions";
 
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+      <path
+        fill="#EA4335"
+        d="M12 5.4c1.5 0 2.9.5 3.9 1.6l2.9-2.9C17.2 2.4 14.8 1.4 12 1.4 7.3 1.4 3.3 4.2 1.7 8.4l3.4 2.6C6 7.7 8.7 5.4 12 5.4z"
+      />
+      <path
+        fill="#4285F4"
+        d="M22.6 12.2c0-.8-.1-1.6-.2-2.3H12v4.4h5.9c-.3 1.4-1.1 2.6-2.3 3.4l3.5 2.7c2.1-1.9 3.5-4.8 3.5-8.2z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.1 14.3c-.3-.9-.5-1.8-.5-2.8s.2-1.9.5-2.8L1.7 6.1C.9 7.8.4 9.8.4 11.5s.5 3.7 1.3 5.4l3.4-2.6z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 22.6c2.8 0 5.1-.9 6.8-2.5l-3.5-2.7c-.9.6-2.1 1-3.3 1-3.3 0-6-2.2-7-5.3L1.7 16.9C3.3 21.1 7.3 22.6 12 22.6z"
+      />
+    </svg>
+  );
+}
+
 function MicrosoftIcon() {
   return (
     <svg viewBox="0 0 23 23" className="h-5 w-5" aria-hidden>
@@ -126,10 +149,12 @@ export function InviteClient({
               <div className="mt-6 space-y-3">
                 <Button
                   type="button"
-                  className="w-full"
+                  variant="outline"
+                  className="w-full gap-2"
                   disabled={oauthLoading !== null}
                   onClick={() => void onOAuth("google")}
                 >
+                  <GoogleIcon />
                   {oauthLoading === "google"
                     ? "Conectando..."
                     : "Continuar con Google"}

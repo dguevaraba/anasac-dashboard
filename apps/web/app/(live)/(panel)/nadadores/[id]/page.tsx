@@ -62,7 +62,9 @@ export default async function PaginaFichaNadador({
     nombre: row.first_name,
     apellido: row.last_name,
     cedula: verSensibles ? row.document_id : null,
-    fechaNacimiento: String(row.birth_date).slice(0, 10),
+    fechaNacimiento: row.birth_date
+      ? String(row.birth_date).slice(0, 10)
+      : null,
     genero: row.gender,
     correo: verSensibles ? row.email : null,
     telefono: verSensibles ? row.phone : null,
@@ -75,6 +77,7 @@ export default async function PaginaFichaNadador({
     estado: row.status as NadadorItem["estado"],
     categoriaId: row.category_id,
     entrenadorId: row.coach_id,
+    grupo: row.training_group,
     categoriaNombre: textoRelacion(row.categories as Rel),
     entrenadorNombre: textoRelacion(row.coaches as Rel, "full_name"),
     creadoEn: row.created_at,

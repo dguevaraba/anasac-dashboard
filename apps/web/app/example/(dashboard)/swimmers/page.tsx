@@ -33,7 +33,7 @@ import type { Swimmer } from "@/types";
 const STATUS_VARIANT = {
   activo: "success",
   inactivo: "danger",
-  moroso: "warning",
+  pendiente: "warning",
   becado: "default",
 } as const;
 
@@ -149,7 +149,7 @@ export default function SwimmersPage() {
             <option value="todos">Todos los estados</option>
             <option value="activo">Activo</option>
             <option value="inactivo">Inactivo</option>
-            <option value="moroso">Moroso</option>
+            <option value="pendiente">Pendiente</option>
             <option value="becado">Becado</option>
           </Select>
         </CardContent>

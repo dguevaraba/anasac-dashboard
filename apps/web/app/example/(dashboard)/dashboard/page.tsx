@@ -185,7 +185,7 @@ export default function DashboardPage() {
             </p>
           </div>
           <Link
-            href={appHref(basePath, "/payments")}
+            href={appHref(basePath, "/pagos")}
             className="text-sm font-semibold text-[var(--anasac-teal)] hover:underline"
           >
             Ir a pagos →

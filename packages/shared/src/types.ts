@@ -77,7 +77,7 @@ export interface Swimmer {
   photoUrl?: string;
   joinDate?: string;
   paymentDay?: number;
-  status: "activo" | "inactivo" | "moroso" | "becado";
+  status: "activo" | "inactivo" | "pendiente" | "becado";
   createdAt: string;
   updatedAt: string;
 }

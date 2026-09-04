@@ -1,11 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { GRUPOS_NADADOR_SET } from "@/lib/nadadores/grupos";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { fetchProfileById } from "@/lib/auth/profile";
 
 const GENEROS = new Set(["masculino", "femenino", "otro"]);
-const ESTADOS = new Set(["activo", "inactivo", "moroso", "becado"]);
+const ESTADOS = new Set(["activo", "inactivo", "pendiente", "becado"]);
 const TIPOS_SANGRE = new Set(["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]);
 const TIPOS_FOTO = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 const TAMANO_MAX_FOTO = 5 * 1024 * 1024;
@@ -86,7 +87,7 @@ async function subirFotoNadador(
 function parsearCamposNadador(formData: FormData) {
   const firstName = String(formData.get("firstName") ?? "").trim();
   const lastName = String(formData.get("lastName") ?? "").trim();
-  const birthDate = String(formData.get("birthDate") ?? "").trim();
+  const birthDate = vacioANulo(String(formData.get("birthDate") ?? ""));
   const gender = String(formData.get("gender") ?? "").trim();
   const status = String(formData.get("status") ?? "activo").trim();
   const documentId = vacioANulo(String(formData.get("documentId") ?? ""));
@@ -95,6 +96,7 @@ function parsearCamposNadador(formData: FormData) {
   const guardianPhone = vacioANulo(String(formData.get("guardianPhone") ?? ""));
   const categoryId = vacioANulo(String(formData.get("categoryId") ?? ""));
   const coachId = vacioANulo(String(formData.get("coachId") ?? ""));
+  const trainingGroup = vacioANulo(String(formData.get("trainingGroup") ?? ""));
   const bloodType = vacioANulo(String(formData.get("bloodType") ?? ""));
   const joinDate = vacioANulo(String(formData.get("joinDate") ?? ""));
   const paymentDayRaw = String(formData.get("paymentDay") ?? "").trim();
@@ -103,14 +105,14 @@ function parsearCamposNadador(formData: FormData) {
   if (!firstName || !lastName) {
     return { error: "Nombre y apellido son obligatorios." as const };
   }
-  if (!birthDate) {
-    return { error: "La fecha de nacimiento es obligatoria." as const };
-  }
   if (!GENEROS.has(gender)) {
     return { error: "Género no válido." as const };
   }
   if (!ESTADOS.has(status)) {
     return { error: "Estado no válido." as const };
+  }
+  if (trainingGroup && !GRUPOS_NADADOR_SET.has(trainingGroup)) {
+    return { error: "Grupo no válido." as const };
   }
   if (bloodType && !TIPOS_SANGRE.has(bloodType)) {
     return { error: "Tipo de sangre no válido." as const };
@@ -136,6 +138,7 @@ function parsearCamposNadador(formData: FormData) {
       guardian_phone: guardianPhone,
       category_id: categoryId,
       coach_id: coachId,
+      training_group: trainingGroup,
       blood_type: bloodType,
       join_date: joinDate,
       payment_day: paymentDay,

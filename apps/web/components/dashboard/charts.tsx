@@ -25,6 +25,7 @@ import {
   resultsByStroke,
   resultsTrend,
 } from "@/lib/mock/analytics";
+import { cn } from "@/lib/utils";
 
 const COLORS = {
   teal: "#2e768d",
@@ -143,16 +144,29 @@ export function ResultsCharts() {
   );
 }
 
-export function PaymentsChart() {
+export function PaymentsChart({
+  data,
+  subtitle = "Montos en colones (CRC) — datos demo",
+  compact = false,
+  className,
+}: {
+  data?: { mes: string; cobrado: number; pendiente: number }[];
+  subtitle?: string;
+  compact?: boolean;
+  className?: string;
+}) {
+  const chartData = data ?? paymentsByMonth;
   return (
-    <Card bubbles bubblePreset="header">
-      <CardHeader>
-        <CardTitle>Pagos cobrados vs pendientes</CardTitle>
-        <p className="text-xs text-slate-500">Montos en colones (CRC) — datos demo</p>
+    <Card bubbles bubblePreset="header" className={className}>
+      <CardHeader className={compact ? "p-3 pb-1" : undefined}>
+        <CardTitle className={compact ? "text-sm" : undefined}>
+          Pagos cobrados vs pendientes
+        </CardTitle>
+        <p className={cn("text-xs text-slate-500", !subtitle && "hidden")}>{subtitle}</p>
       </CardHeader>
-      <CardContent className="h-72">
+      <CardContent className={compact ? "h-56 p-3 pt-0 md:h-64" : "h-72"}>
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={paymentsByMonth}>
+          <AreaChart data={chartData}>
             <defs>
               <linearGradient id="cobradoFill" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor={COLORS.teal} stopOpacity={0.45} />
