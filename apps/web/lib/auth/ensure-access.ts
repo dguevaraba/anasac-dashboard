@@ -2,6 +2,7 @@ import type { User } from "@supabase/supabase-js";
 import { createServiceSupabase } from "@/lib/supabase/admin";
 import { getSupabaseEnv } from "@/lib/supabase/config";
 import { displayNameFromAuthUser, fetchProfileById } from "@/lib/auth/profile";
+import { ANASAC_ORGANIZATION_ID } from "@/lib/organizations/constants";
 import type { UserProfile } from "@/types";
 
 type AccessResult =
@@ -80,6 +81,7 @@ async function maybeBootstrapAdmin(user: User): Promise<UserProfile | null> {
     full_name: displayNameFromAuthUser(user),
     role_id: adminRole.id,
     is_active: true,
+    active_organization_id: ANASAC_ORGANIZATION_ID,
     avatar_url:
       typeof user.user_metadata?.avatar_url === "string"
         ? user.user_metadata.avatar_url
@@ -87,6 +89,11 @@ async function maybeBootstrapAdmin(user: User): Promise<UserProfile | null> {
   });
 
   if (insertError) return null;
+
+  await admin.from("organization_members").insert({
+    organization_id: ANASAC_ORGANIZATION_ID,
+    profile_id: user.id,
+  });
 
   return fetchProfileById(admin, user.id);
 }

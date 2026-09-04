@@ -14,6 +14,7 @@ import { Select } from "@/components/ui/select";
 import { appHref, useAppConfig } from "@/lib/app-config";
 import { useAuth } from "@/lib/auth/auth-context";
 import { formatCrc } from "@/lib/mock/analytics";
+import { calcularIva, IVA_RATE, montoTotalPago } from "@/lib/pagos/iva";
 import { cn, formatDate } from "@/lib/utils";
 import { actualizarPagoAction } from "../actions";
 import type { PagoItem } from "../gestor-pagos";
@@ -51,10 +52,12 @@ export function FichaPago({ pago }: { pago: PagoItem }) {
   const [errorFormulario, setErrorFormulario] = useState<string | null>(null);
   const [estadoForm, setEstadoForm] = useState(pago.status);
   const [facturaUrl, setFacturaUrl] = useState(pago.invoiceUrl);
+  const [montoForm, setMontoForm] = useState(pago.amount);
 
   function abrirEdicion() {
     setEstadoForm(pago.status);
     setFacturaUrl(pago.invoiceUrl);
+    setMontoForm(pago.amount);
     setErrorFormulario(null);
     setEditando(true);
   }
@@ -64,6 +67,7 @@ export function FichaPago({ pago }: { pago: PagoItem }) {
     setErrorFormulario(null);
     setEstadoForm(pago.status);
     setFacturaUrl(pago.invoiceUrl);
+    setMontoForm(pago.amount);
   }
 
   async function alGuardar(formData: FormData) {
@@ -149,7 +153,7 @@ export function FichaPago({ pago }: { pago: PagoItem }) {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="amount">Monto (₡)</Label>
+                <Label htmlFor="amount">Cuota base (₡)</Label>
                 <Input
                   id="amount"
                   name="amount"
@@ -157,8 +161,14 @@ export function FichaPago({ pago }: { pago: PagoItem }) {
                   min={0}
                   step={1}
                   required
-                  defaultValue={pago.amount}
+                  value={montoForm}
+                  onChange={(e) => setMontoForm(Number(e.target.value) || 0)}
                 />
+                <p className="text-xs text-slate-500">
+                  IVA {Math.round(IVA_RATE * 100)}%:{" "}
+                  {formatCrc(calcularIva(montoForm))} · Total:{" "}
+                  {formatCrc(montoForm + calcularIva(montoForm))}
+                </p>
               </div>
               <div className="space-y-1">
                 <Label htmlFor="dueDate">Vence</Label>
@@ -196,6 +206,33 @@ export function FichaPago({ pago }: { pago: PagoItem }) {
                   type="date"
                   required={estadoForm === "pagado"}
                   defaultValue={pago.paidAt ?? ""}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="receiptNumber">Comprobante</Label>
+                <Input
+                  id="receiptNumber"
+                  name="receiptNumber"
+                  defaultValue={pago.receiptNumber ?? ""}
+                  placeholder="Nº SINPE"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="paymentMethod">Método</Label>
+                <Input
+                  id="paymentMethod"
+                  name="paymentMethod"
+                  defaultValue={pago.paymentMethod ?? ""}
+                  placeholder="SINPE"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="bank">Banco</Label>
+                <Input
+                  id="bank"
+                  name="bank"
+                  defaultValue={pago.bank ?? ""}
+                  placeholder="BCR, BAC…"
                 />
               </div>
               <div className="space-y-1 md:col-span-2">
@@ -250,7 +287,15 @@ export function FichaPago({ pago }: { pago: PagoItem }) {
         <Card bubbles bubblePreset="panel">
           <CardContent className="grid gap-5 p-5 sm:grid-cols-2">
             <Dato etiqueta="Periodo" valor={pago.period} />
-            <Dato etiqueta="Monto" valor={formatCrc(pago.amount)} />
+            <Dato etiqueta="Cuota base" valor={formatCrc(pago.amount)} />
+            <Dato
+              etiqueta="IVA (13%)"
+              valor={formatCrc(calcularIva(pago.amount))}
+            />
+            <Dato
+              etiqueta="Total"
+              valor={formatCrc(montoTotalPago(pago))}
+            />
             <Dato etiqueta="Vence" valor={formatDate(pago.dueDate)} />
             <Dato
               etiqueta="Pagado"
@@ -264,6 +309,13 @@ export function FichaPago({ pago }: { pago: PagoItem }) {
               }
             />
             {pago.grupo ? <Dato etiqueta="Grupo" valor={pago.grupo} /> : null}
+            {pago.receiptNumber ? (
+              <Dato etiqueta="Comprobante" valor={pago.receiptNumber} />
+            ) : null}
+            {pago.paymentMethod ? (
+              <Dato etiqueta="Método" valor={pago.paymentMethod} />
+            ) : null}
+            {pago.bank ? <Dato etiqueta="Banco" valor={pago.bank} /> : null}
           </CardContent>
         </Card>
 

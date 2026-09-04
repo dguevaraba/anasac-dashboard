@@ -123,7 +123,7 @@ export function GestorNadadores({
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [filtroCategoria, setFiltroCategoria] = useState("todas");
   const [filtroGrupo, setFiltroGrupo] = useState<GrupoNadador | "todos">(
-    GRUPO_DEFAULT,
+    "todos",
   );
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -169,14 +169,14 @@ export function GestorNadadores({
   const filtrosActivos =
     consulta.trim() !== "" ||
     filtroCategoria !== "todas" ||
-    filtroGrupo !== GRUPO_DEFAULT ||
+    filtroGrupo !== "todos" ||
     (puedeVerEstado && filtroEstado !== "todos");
 
   function limpiarFiltros() {
     setConsulta("");
     setFiltroEstado("todos");
     setFiltroCategoria("todas");
-    setFiltroGrupo(GRUPO_DEFAULT);
+    setFiltroGrupo("todos");
   }
 
   function abrirCrear() {

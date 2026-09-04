@@ -25,6 +25,7 @@ import {
 import { appHref, useAppConfig } from "@/lib/app-config";
 import { useAuth } from "@/lib/auth/auth-context";
 import { formatCrc } from "@/lib/mock/analytics";
+import { montoTotalPago } from "@/lib/pagos/iva";
 import { cn, formatDate } from "@/lib/utils";
 import type { PagoItem } from "../../gestor-pagos";
 
@@ -101,10 +102,10 @@ export function VistaPagosNadador({
 
   const cobrado = pagos
     .filter((p) => p.status === "pagado")
-    .reduce((s, p) => s + p.amount, 0);
+    .reduce((s, p) => s + montoTotalPago(p), 0);
   const pendiente = pagos
     .filter((p) => p.status !== "pagado")
-    .reduce((s, p) => s + p.amount, 0);
+    .reduce((s, p) => s + montoTotalPago(p), 0);
   const total = cobrado + pendiente;
   const cobertura = total > 0 ? Math.round((cobrado / total) * 100) : 0;
   const cuenta = estadoCuenta(pagos);
@@ -174,7 +175,7 @@ export function VistaPagosNadador({
               etiqueta="Último pago"
               valor={
                 ultimoPago
-                  ? formatCrc(ultimoPago.amount)
+                  ? formatCrc(montoTotalPago(ultimoPago))
                   : "Sin pagos registrados"
               }
               hint={
@@ -193,7 +194,7 @@ export function VistaPagosNadador({
             <Dato
               etiqueta="Próximo / pendiente"
               valor={
-                proximo ? formatCrc(proximo.amount) : "Sin pendientes"
+                proximo ? formatCrc(montoTotalPago(proximo)) : "Sin pendientes"
               }
               hint={
                 proximo
@@ -314,7 +315,7 @@ export function VistaPagosNadador({
                     Total
                   </TableCell>
                   <TableCell className="font-semibold text-[var(--anasac-navy)]">
-                    {formatCrc(total)}
+                    {formatCrc(ordenados.reduce((s, p) => s + p.amount, 0))}
                   </TableCell>
                   <TableCell colSpan={5} />
                 </TableRow>

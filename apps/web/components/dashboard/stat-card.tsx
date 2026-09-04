@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { Bubbles } from "@/components/ui/bubbles";
 import { cn } from "@/lib/utils";
 
@@ -7,21 +8,25 @@ export function StatCard({
   value,
   hint,
   icon,
+  href,
   className,
 }: {
   title: string;
   value: string | number;
   hint?: string;
   icon?: ReactNode;
+  href?: string;
   className?: string;
 }) {
-  return (
-    <div
-      className={cn(
-        "relative overflow-hidden rounded-2xl border border-[var(--anasac-border)] bg-white p-5 shadow-[0_8px_24px_rgba(15,44,61,0.06)]",
-        className,
-      )}
-    >
+  const cardClass = cn(
+    "relative overflow-hidden rounded-2xl border border-[var(--anasac-border)] bg-white p-5 shadow-[0_8px_24px_rgba(15,44,61,0.06)]",
+    href &&
+      "block transition hover:border-[var(--anasac-teal)] hover:shadow-[0_10px_28px_rgba(15,44,61,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--anasac-teal)]",
+    className,
+  );
+
+  const body = (
+    <>
       <Bubbles preset="card" />
       <div className="relative flex items-start justify-between gap-3">
         <div>
@@ -40,6 +45,16 @@ export function StatCard({
           </div>
         ) : null}
       </div>
-    </div>
+    </>
   );
+
+  if (href) {
+    return (
+      <Link href={href} className={cardClass}>
+        {body}
+      </Link>
+    );
+  }
+
+  return <div className={cardClass}>{body}</div>;
 }

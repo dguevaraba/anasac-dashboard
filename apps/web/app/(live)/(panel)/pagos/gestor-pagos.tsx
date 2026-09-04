@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BrushCleaning, Eye, FileSpreadsheet, FileText, Plus, Wallet } from "lucide-react";
+import { BrushCleaning, Calculator, Eye, FileSpreadsheet, FileText, Plus, Wallet } from "lucide-react";
 import { EmptyState } from "@/components/layout/empty-state";
 import { NextPaymentCard } from "@/components/dashboard/next-payment-card";
 import { PaymentsChart } from "@/components/dashboard/charts";
@@ -25,8 +25,10 @@ import {
 import { appHref, useAppConfig } from "@/lib/app-config";
 import { useAuth } from "@/lib/auth/auth-context";
 import { daysUntil, formatCrc } from "@/lib/mock/analytics";
+import { calcularIva, IVA_RATE, montoTotalPago } from "@/lib/pagos/iva";
 import { cn, formatDate } from "@/lib/utils";
 import { ModalExportarPagos } from "@/components/pagos/modal-exportar-pagos";
+import { ModalIvaPagos } from "@/components/pagos/modal-iva-pagos";
 import { crearPagoAction } from "./actions";
 
 export type PagoItem = {
@@ -36,11 +38,15 @@ export type PagoItem = {
   grupo: string | null;
   concept: string;
   amount: number;
+  tax: number;
   dueDate: string;
   paidAt: string | null;
   status: "pagado" | "pendiente" | "vencido" | "parcial";
   period: string;
   invoiceUrl: string | null;
+  receiptNumber: string | null;
+  paymentMethod: string | null;
+  bank: string | null;
 };
 
 export type NadadorOpcion = { id: string; etiqueta: string };
@@ -102,7 +108,7 @@ function cobroMesEnCurso(pagos: PagoItem[]) {
   return {
     dueDate,
     daysRemaining: daysUntil(dueDate),
-    pendingAmount: pendientes.reduce((s, p) => s + p.amount, 0),
+    pendingAmount: pendientes.reduce((s, p) => s + montoTotalPago(p), 0),
     pendingCount: pendientes.length,
     monthLabel: `${MESES_LARGO[now.getMonth()]} ${now.getFullYear()}`,
   };
@@ -127,10 +133,10 @@ function construirSerieEstados(pagos: PagoItem[]) {
       vencido: 0,
       parcial: 0,
     };
-    if (p.status === "pagado") bucket.pagado += p.amount;
-    else if (p.status === "vencido") bucket.vencido += p.amount;
-    else if (p.status === "parcial") bucket.parcial += p.amount;
-    else bucket.pendiente += p.amount;
+    if (p.status === "pagado") bucket.pagado += montoTotalPago(p);
+    else if (p.status === "vencido") bucket.vencido += montoTotalPago(p);
+    else if (p.status === "parcial") bucket.parcial += montoTotalPago(p);
+    else bucket.pendiente += montoTotalPago(p);
     map.set(p.period, bucket);
   }
   return map;
@@ -166,6 +172,8 @@ export function GestorPagos({
   const [exportFormato, setExportFormato] = useState<"excel" | "pdf" | null>(
     null,
   );
+  const [mostrarIva, setMostrarIva] = useState(false);
+  const [montoForm, setMontoForm] = useState(25000);
 
   const periodoWidgets = useMemo(() => {
     const actual = mesActualIso();
@@ -182,6 +190,7 @@ export function GestorPagos({
   function abrirCrear() {
     setPeriodoForm(mesActualIso());
     setEstadoForm("pendiente");
+    setMontoForm(25000);
     setErrorFormulario(null);
     setMostrarFormulario(true);
   }
@@ -210,7 +219,7 @@ export function GestorPagos({
     );
     return {
       ...corte,
-      pendingAmount: pendientes.reduce((s, p) => s + p.amount, 0),
+      pendingAmount: pendientes.reduce((s, p) => s + montoTotalPago(p), 0),
       pendingCount: pendientes.length,
     };
   }, [pagos, periodoWidgets]);
@@ -219,10 +228,10 @@ export function GestorPagos({
     const delMes = pagos.filter((p) => p.period === periodoWidgets);
     const paid = delMes
       .filter((p) => p.status === "pagado")
-      .reduce((s, p) => s + p.amount, 0);
+      .reduce((s, p) => s + montoTotalPago(p), 0);
     const pending = delMes
       .filter((p) => p.status !== "pagado")
-      .reduce((s, p) => s + p.amount, 0);
+      .reduce((s, p) => s + montoTotalPago(p), 0);
     return {
       paid,
       esperado: paid + pending,
@@ -295,11 +304,6 @@ export function GestorPagos({
     return puntos;
   }, [pagos, mesDesde, mesHasta, nadadorId]);
 
-  const totalVista = useMemo(
-    () => filtrados.reduce((s, p) => s + p.amount, 0),
-    [filtrados],
-  );
-
   const filtrosActivos =
     mesDesde !== periodoWidgets ||
     mesHasta !== periodoWidgets ||
@@ -363,7 +367,7 @@ export function GestorPagos({
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="amount">Monto (₡)</Label>
+            <Label htmlFor="amount">Cuota base (₡)</Label>
             <Input
               id="amount"
               name="amount"
@@ -371,8 +375,13 @@ export function GestorPagos({
               min={0}
               step={1}
               required
-              defaultValue={15000}
+              value={montoForm}
+              onChange={(e) => setMontoForm(Number(e.target.value) || 0)}
             />
+            <p className="text-xs text-slate-500">
+              IVA {Math.round(IVA_RATE * 100)}%: {formatCrc(calcularIva(montoForm))} ·
+              Total: {formatCrc(montoForm + calcularIva(montoForm))}
+            </p>
           </div>
           <div className="space-y-1">
             <Label htmlFor="dueDate">Vence</Label>
@@ -409,6 +418,27 @@ export function GestorPagos({
               type="date"
               required={estadoForm === "pagado"}
             />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="receiptNumber">Comprobante</Label>
+            <Input
+              id="receiptNumber"
+              name="receiptNumber"
+              placeholder="Nº SINPE"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="paymentMethod">Método</Label>
+            <Input
+              id="paymentMethod"
+              name="paymentMethod"
+              placeholder="SINPE"
+              defaultValue="SINPE"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="bank">Banco</Label>
+            <Input id="bank" name="bank" placeholder="BCR, BAC…" />
           </div>
           <div className="space-y-1 md:col-span-3">
             <Label htmlFor="invoice">Factura (opcional)</Label>
@@ -596,6 +626,14 @@ export function GestorPagos({
             <Button
               type="button"
               variant="outline"
+              onClick={() => setMostrarIva(true)}
+            >
+              <Calculator className="h-4 w-4" />
+              IVA
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
               onClick={() => setExportFormato("excel")}
             >
               <FileSpreadsheet className="h-4 w-4" />
@@ -702,7 +740,7 @@ export function GestorPagos({
                     Total
                   </TableCell>
                   <TableCell className="font-semibold text-[var(--anasac-navy)]">
-                    {formatCrc(totalVista)}
+                    {formatCrc(filtrados.reduce((s, p) => s + p.amount, 0))}
                   </TableCell>
                   <TableCell colSpan={5} />
                 </TableRow>
@@ -728,10 +766,14 @@ export function GestorPagos({
           grupo: p.grupo,
           concept: p.concept,
           amount: p.amount,
+          tax: p.tax,
           dueDate: p.dueDate,
           paidAt: p.paidAt,
           status: p.status,
           period: p.period,
+          receiptNumber: p.receiptNumber,
+          paymentMethod: p.paymentMethod,
+          bank: p.bank,
         }))}
         filtrosBase={{
           mesDesde,
@@ -744,6 +786,11 @@ export function GestorPagos({
             ? undefined
             : nadadores.find((n) => n.id === nadadorId)?.etiqueta
         }
+      />
+      <ModalIvaPagos
+        abierto={mostrarIva}
+        onClose={() => setMostrarIva(false)}
+        filas={filtrados}
       />
     </div>
   );

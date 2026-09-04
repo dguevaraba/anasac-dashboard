@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { GRUPOS_NADADOR_SET } from "@/lib/nadadores/grupos";
+import { resolveOrganizationId } from "@/lib/organizations/constants";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { fetchProfileById } from "@/lib/auth/profile";
 
@@ -147,8 +148,8 @@ function parsearCamposNadador(formData: FormData) {
 }
 
 export async function crearNadadorAction(formData: FormData) {
-  const { supabase, error } = await exigirPersonalNadadores();
-  if (error) return { ok: false as const, error };
+  const { supabase, error, profile } = await exigirPersonalNadadores();
+  if (error || !profile) return { ok: false as const, error: error ?? "No autenticado" };
 
   const parsed = parsearCamposNadador(formData);
   if (parsed.error || !parsed.row) {
@@ -156,10 +157,11 @@ export async function crearNadadorAction(formData: FormData) {
   }
 
   const foto = obtenerArchivoFoto(formData);
+  const organizationId = await resolveOrganizationId(supabase, profile.id);
 
   const { data: creado, error: insertError } = await supabase
     .from("swimmers")
-    .insert(parsed.row)
+    .insert({ ...parsed.row, organization_id: organizationId })
     .select("id")
     .single();
 

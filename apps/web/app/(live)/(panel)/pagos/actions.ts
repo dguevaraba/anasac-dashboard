@@ -4,6 +4,8 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { fetchProfileById } from "@/lib/auth/profile";
+import { resolveOrganizationId } from "@/lib/organizations/constants";
+import { calcularIva } from "@/lib/pagos/iva";
 
 const ESTADOS = new Set(["pendiente", "pagado", "vencido", "parcial"]);
 const TIPOS_FACTURA = new Set([
@@ -23,7 +25,7 @@ async function exigirPersonalPagos() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { supabase, error: "No autenticado" as const };
+    return { supabase, error: "No autenticado" as const, userId: null as string | null };
   }
   const profile = await fetchProfileById(supabase, user.id);
   if (
@@ -33,9 +35,10 @@ async function exigirPersonalPagos() {
     return {
       supabase,
       error: "No autorizado." as const,
+      userId: null as string | null,
     };
   }
-  return { supabase, error: null };
+  return { supabase, error: null, userId: user.id as string };
 }
 
 function extensionFactura(mime: string) {
@@ -82,8 +85,8 @@ async function subirFactura(
 }
 
 export async function crearPagoAction(formData: FormData) {
-  const { supabase, error } = await exigirPersonalPagos();
-  if (error) return { ok: false as const, error };
+  const { supabase, error, userId } = await exigirPersonalPagos();
+  if (error || !userId) return { ok: false as const, error: error ?? "No autenticado" };
 
   const swimmerId = String(formData.get("swimmerId") ?? "").trim();
   const period = String(formData.get("period") ?? "").trim();
@@ -93,6 +96,9 @@ export async function crearPagoAction(formData: FormData) {
   const status = String(formData.get("status") ?? "pendiente").trim();
   const paidAtRaw = String(formData.get("paidAt") ?? "").trim();
   const notesRaw = String(formData.get("notes") ?? "").trim();
+  const receiptNumber = String(formData.get("receiptNumber") ?? "").trim() || null;
+  const paymentMethod = String(formData.get("paymentMethod") ?? "").trim() || null;
+  const bank = String(formData.get("bank") ?? "").trim() || null;
 
   if (!swimmerId) {
     return { ok: false as const, error: "Seleccioná un nadador." };
@@ -107,6 +113,7 @@ export async function crearPagoAction(formData: FormData) {
       error: "El monto debe ser un entero en colones (≥ 0).",
     };
   }
+  const tax = calcularIva(amount);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) {
     return { ok: false as const, error: "Fecha de vencimiento no válida." };
   }
@@ -126,6 +133,7 @@ export async function crearPagoAction(formData: FormData) {
   const concept = conceptRaw || `Mensualidad ${period}`;
   const notes = notesRaw || null;
   const pagoId = randomUUID();
+  const organizationId = await resolveOrganizationId(supabase, userId);
 
   let invoiceUrl: string | null = null;
   const factura = obtenerArchivoFactura(formData);
@@ -144,12 +152,17 @@ export async function crearPagoAction(formData: FormData) {
     swimmer_id: swimmerId,
     concept,
     amount_crc: amount,
+    tax_crc: tax,
     due_date: dueDate,
     paid_at: paidAt,
     status,
     period,
     notes,
+    receipt_number: receiptNumber,
+    payment_method: paymentMethod,
+    bank,
     invoice_url: invoiceUrl,
+    organization_id: organizationId,
   });
 
   if (insertError) {
@@ -180,6 +193,9 @@ export async function actualizarPagoAction(formData: FormData) {
   const status = String(formData.get("status") ?? "pendiente").trim();
   const paidAtRaw = String(formData.get("paidAt") ?? "").trim();
   const notesRaw = String(formData.get("notes") ?? "").trim();
+  const receiptNumber = String(formData.get("receiptNumber") ?? "").trim() || null;
+  const paymentMethod = String(formData.get("paymentMethod") ?? "").trim() || null;
+  const bank = String(formData.get("bank") ?? "").trim() || null;
   const quitarFactura = String(formData.get("removeInvoice") ?? "") === "on";
 
   if (!id) {
@@ -195,6 +211,7 @@ export async function actualizarPagoAction(formData: FormData) {
       error: "El monto debe ser un entero en colones (≥ 0).",
     };
   }
+  const tax = calcularIva(amount);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) {
     return { ok: false as const, error: "Fecha de vencimiento no válida." };
   }
@@ -214,11 +231,15 @@ export async function actualizarPagoAction(formData: FormData) {
   const updatePayload: Record<string, unknown> = {
     concept: conceptRaw || `Mensualidad ${period}`,
     amount_crc: amount,
+    tax_crc: tax,
     due_date: dueDate,
     paid_at: paidAt,
     status,
     period,
     notes: notesRaw || null,
+    receipt_number: receiptNumber,
+    payment_method: paymentMethod,
+    bank,
     updated_at: new Date().toISOString(),
   };
 

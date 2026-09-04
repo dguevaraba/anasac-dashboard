@@ -1,4 +1,5 @@
 import { formatCrc } from "@/lib/mock/analytics";
+import { calcularIva, montoTotalPago } from "@/lib/pagos/iva";
 
 export type FilaReportePago = {
   id: string;
@@ -7,10 +8,14 @@ export type FilaReportePago = {
   grupo: string | null;
   concept: string;
   amount: number;
+  tax?: number;
   dueDate: string;
   paidAt: string | null;
   status: string;
   period: string;
+  receiptNumber?: string | null;
+  paymentMethod?: string | null;
+  bank?: string | null;
 };
 
 export type FiltrosReportePagos = {
@@ -54,15 +59,19 @@ export function filtrarPagosReporte(
 export function resumenPagos(filas: FilaReportePago[]) {
   const cobrado = filas
     .filter((p) => p.status === "pagado")
-    .reduce((s, p) => s + p.amount, 0);
+    .reduce((s, p) => s + montoTotalPago(p), 0);
   const pendiente = filas
     .filter((p) => p.status !== "pagado")
-    .reduce((s, p) => s + p.amount, 0);
+    .reduce((s, p) => s + montoTotalPago(p), 0);
+  const base = filas.reduce((s, p) => s + p.amount, 0);
+  const iva = filas.reduce((s, p) => s + calcularIva(p.amount), 0);
   return {
     cuotas: filas.length,
     cobrado,
     pendiente,
     total: cobrado + pendiente,
+    base,
+    iva,
   };
 }
 
@@ -86,9 +95,14 @@ function filasTabla(filas: FilaReportePago[]) {
     p.grupo ?? "—",
     p.concept,
     p.amount,
+    calcularIva(p.amount),
+    montoTotalPago(p),
     p.status,
     p.dueDate,
     p.paidAt ?? "—",
+    p.receiptNumber ?? "—",
+    p.paymentMethod ?? "—",
+    p.bank ?? "—",
   ]);
 }
 
@@ -97,10 +111,15 @@ const HEADERS = [
   "Nadador",
   "Grupo",
   "Concepto",
-  "Monto (CRC)",
+  "Cuota (CRC)",
+  "IVA (CRC)",
+  "Total (CRC)",
   "Estado",
   "Vence",
   "Pagado",
+  "Comprobante",
+  "Método",
+  "Banco",
 ] as const;
 
 export async function descargarExcelPagos(
@@ -121,6 +140,8 @@ export async function descargarExcelPagos(
     ["Estado", filtros.estado === "todos" ? "Todos" : filtros.estado],
     [],
     ["Cuotas", resumen.cuotas],
+    ["Base (cuotas)", resumen.base],
+    ["IVA", resumen.iva],
     ["Cobrado", resumen.cobrado],
     ["Pendiente", resumen.pendiente],
     ["Total esperado", resumen.total],
@@ -134,12 +155,17 @@ export async function descargarExcelPagos(
   sheet["!cols"] = [
     { wch: 10 },
     { wch: 28 },
+    { wch: 16 },
     { wch: 22 },
-    { wch: 22 },
     { wch: 12 },
     { wch: 12 },
     { wch: 12 },
     { wch: 12 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 14 },
+    { wch: 10 },
+    { wch: 10 },
   ];
   XLSX.utils.book_append_sheet(workbook, sheet, "Pagos");
   XLSX.writeFile(workbook, `anasac-pagos_${slugFiltros(filtros)}.xlsx`);
@@ -174,7 +200,7 @@ export async function descargarPdfPagos(
     36,
   );
   doc.text(
-    `Cuotas: ${resumen.cuotas}  ·  Cobrado: ${formatCrc(resumen.cobrado)}  ·  Pendiente: ${formatCrc(resumen.pendiente)}  ·  Esperado: ${formatCrc(resumen.total)}`,
+    `Cuotas: ${resumen.cuotas}  ·  Base: ${formatCrc(resumen.base)}  ·  IVA: ${formatCrc(resumen.iva)}  ·  Cobrado: ${formatCrc(resumen.cobrado)}  ·  Esperado: ${formatCrc(resumen.total)}`,
     14,
     42,
   );
@@ -188,11 +214,16 @@ export async function descargarPdfPagos(
       p.grupo ?? "—",
       p.concept,
       formatCrc(p.amount),
+      formatCrc(calcularIva(p.amount)),
+      formatCrc(montoTotalPago(p)),
       p.status,
       p.dueDate,
       p.paidAt ?? "—",
+      p.receiptNumber ?? "—",
+      p.paymentMethod ?? "—",
+      p.bank ?? "—",
     ]),
-    styles: { fontSize: 8, cellPadding: 2 },
+    styles: { fontSize: 7, cellPadding: 1.5 },
     headStyles: { fillColor: [15, 44, 61] },
     alternateRowStyles: { fillColor: [245, 248, 250] },
   });

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { fetchProfileById } from "@/lib/auth/profile";
 import { ALL_ROLES } from "@/lib/auth/permissions";
+import { resolveOrganizationId } from "@/lib/organizations/constants";
 import type { Role } from "@/types";
 
 async function requireAdmin() {
@@ -52,6 +53,7 @@ export async function createInvitationAction(formData: FormData) {
 
   const token = randomBytes(24).toString("hex");
   const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString();
+  const organizationId = await resolveOrganizationId(supabase, profile.id);
 
   const { error: insertError } = await supabase.from("invitations").insert({
     token,
@@ -60,6 +62,7 @@ export async function createInvitationAction(formData: FormData) {
     full_name: fullName,
     invited_by: profile.id,
     expires_at: expiresAt,
+    organization_id: organizationId,
   });
 
   if (insertError) {

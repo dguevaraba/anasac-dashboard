@@ -1,17 +1,23 @@
-import { CalendarDays, CreditCard, Trophy, Users, Waves } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
-import { EmptyState } from "@/components/layout/empty-state";
-import { StatCard } from "@/components/dashboard/stat-card";
+import { DashboardHome } from "@/components/dashboard/dashboard-home";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { fetchProfileById } from "@/lib/auth/profile";
+import { hasPermission } from "@/lib/auth/permissions";
 import { getLiveDashboardStats } from "@/lib/live/stats";
+import {
+  resumenMensualidad,
+  serieCobranzaUltimosMeses,
+} from "@/lib/pagos/resumen-dashboard";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const stats = await getLiveDashboardStats();
   let firstName = "";
+  let mensualidad: ReturnType<typeof resumenMensualidad> | null = null;
+  let chartData: ReturnType<typeof serieCobranzaUltimosMeses> = [];
+  let pagosCount = 0;
 
   if (isSupabaseConfigured()) {
     const supabase = await createServerSupabase();
@@ -21,14 +27,25 @@ export default async function DashboardPage() {
     if (user) {
       const profile = await fetchProfileById(supabase, user.id);
       firstName = profile?.fullName.split(" ")[0] ?? "";
+
+      // Carga datos si el rol real puede ver pagos (p. ej. admin).
+      // La UI final se oculta en cliente si “ver como” no tiene payments:view.
+      if (profile && hasPermission(profile.role, "payments:view")) {
+        const { data: filas } = await supabase
+          .from("payments")
+          .select("amount_crc, tax_crc, status, period");
+        const pagos = (filas ?? []).map((row) => ({
+          amount: Number(row.amount_crc) || 0,
+          tax: Number(row.tax_crc) || 0,
+          status: String(row.status),
+          period: String(row.period),
+        }));
+        pagosCount = pagos.length;
+        mensualidad = resumenMensualidad(pagos);
+        chartData = serieCobranzaUltimosMeses(pagos);
+      }
     }
   }
-
-  const empty =
-    stats.swimmers === 0 &&
-    stats.competitions === 0 &&
-    stats.upcomingEvents === 0 &&
-    stats.results === 0;
 
   return (
     <div>
@@ -37,47 +54,17 @@ export default async function DashboardPage() {
         description="Resumen operativo de ANASAC."
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard
-          title="Nadadores"
-          value={stats.swimmers}
-          hint={`${stats.activeSwimmers} activos`}
-          icon={<Waves className="h-5 w-5" />}
-        />
-        <StatCard
-          title="Competencias"
-          value={stats.competitions}
-          hint="Temporada actual"
-          icon={<Trophy className="h-5 w-5" />}
-        />
-        <StatCard
-          title="Próximos eventos"
-          value={stats.upcomingEvents}
-          hint="En el calendario"
-          icon={<CalendarDays className="h-5 w-5" />}
-        />
-        <StatCard
-          title="Resultados"
-          value={stats.results}
-          hint="Marcas registradas"
-          icon={<Users className="h-5 w-5" />}
-        />
-        <StatCard
-          title="Pagos"
-          value={0}
-          hint="Sin cobros aún"
-          icon={<CreditCard className="h-5 w-5" />}
-        />
-      </div>
-
-      {empty ? (
-        <div className="mt-6">
-          <EmptyState
-            title="Todavía no hay actividad"
-            description="Cuando cargues nadadores, competencias y pagos, el resumen va a aparecer acá."
-          />
-        </div>
-      ) : null}
+      <DashboardHome
+        stats={{
+          swimmers: stats.swimmers,
+          activeSwimmers: stats.activeSwimmers,
+          competitions: stats.competitions,
+          upcomingEvents: stats.upcomingEvents,
+        }}
+        pagosCount={pagosCount}
+        mensualidad={mensualidad}
+        chartData={chartData}
+      />
     </div>
   );
 }

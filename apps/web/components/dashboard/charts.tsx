@@ -181,7 +181,7 @@ export function PaymentsChart({
     <Card bubbles bubblePreset="header" className={className}>
       <CardHeader className={compact ? "p-3 pb-1" : undefined}>
         <CardTitle className={compact ? "text-sm" : undefined}>
-          Cobranza por estado
+          Cobranza mensual
         </CardTitle>
         <p className={cn("text-xs text-slate-500", !subtitle && "hidden")}>
           {subtitle}

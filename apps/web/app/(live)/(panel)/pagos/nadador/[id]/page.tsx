@@ -48,7 +48,7 @@ export default async function PaginaPagosNadador({
     supabase
       .from("payments")
       .select(
-        "id, swimmer_id, concept, amount_crc, due_date, paid_at, status, period, invoice_url",
+        "id, swimmer_id, concept, amount_crc, tax_crc, due_date, paid_at, status, period, invoice_url, receipt_number, payment_method, bank",
       )
       .eq("swimmer_id", id)
       .order("period", { ascending: false }),
@@ -77,11 +77,15 @@ export default async function PaginaPagosNadador({
     grupo: swimmer.training_group,
     concept: row.concept as string,
     amount: Number(row.amount_crc) || 0,
+    tax: Number(row.tax_crc) || 0,
     dueDate: String(row.due_date).slice(0, 10),
     paidAt: row.paid_at ? String(row.paid_at).slice(0, 10) : null,
     status: row.status as PagoItem["status"],
     period: row.period as string,
     invoiceUrl: (row.invoice_url as string | null) ?? null,
+    receiptNumber: (row.receipt_number as string | null) ?? null,
+    paymentMethod: (row.payment_method as string | null) ?? null,
+    bank: (row.bank as string | null) ?? null,
   }));
 
   return <VistaPagosNadador nadador={nadador} pagos={pagos} />;
