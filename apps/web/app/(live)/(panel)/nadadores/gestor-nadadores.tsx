@@ -25,6 +25,7 @@ import { useAuth } from "@/lib/auth/auth-context";
 import {
   GRUPOS_NADADOR,
   GRUPO_DEFAULT,
+  type GrupoNadador,
 } from "@/lib/nadadores/grupos";
 import { formatDate, getAge, cn } from "@/lib/utils";
 import {
@@ -120,7 +121,9 @@ export function GestorNadadores({
   const [consulta, setConsulta] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [filtroCategoria, setFiltroCategoria] = useState("todas");
-  const [filtroGrupo, setFiltroGrupo] = useState(GRUPO_DEFAULT);
+  const [filtroGrupo, setFiltroGrupo] = useState<GrupoNadador | "todos">(
+    GRUPO_DEFAULT,
+  );
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [errorFormulario, setErrorFormulario] = useState<string | null>(null);
@@ -236,7 +239,9 @@ export function GestorNadadores({
           <Select
             className="md:w-52"
             value={filtroGrupo}
-            onChange={(e) => setFiltroGrupo(e.target.value)}
+            onChange={(e) =>
+              setFiltroGrupo(e.target.value as GrupoNadador | "todos")
+            }
             aria-label="Filtrar por grupo"
           >
             <option value="todos">Todos los grupos</option>
