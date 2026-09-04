@@ -11,9 +11,9 @@ import { Bubbles } from "@/components/ui/bubbles";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 const ERRORS: Record<string, string> = {
-  sin_invitacion: "Esta cuenta de Google no tiene acceso.",
+  sin_invitacion: "Esta cuenta no tiene acceso. Pedí una invitación.",
   inactivo: "Tu cuenta está inactiva.",
-  oauth: "No se pudo completar el inicio de sesión con Google.",
+  oauth: "No se pudo completar el inicio de sesión.",
   config: "Falta configurar Supabase en el servidor.",
   invitacion: "El enlace no es válido o ya fue utilizado.",
 };
@@ -23,19 +23,37 @@ function GoogleIcon() {
     <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
       <path
         fill="#EA4335"
-        d="M12 10.2v3.9h5.5c-.2 1.3-1.6 3.8-5.5 3.8-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.2 14.6 2.2 12 2.2 6.9 2.2 2.8 6.3 2.8 11.4S6.9 20.6 12 20.6c5.8 0 9.6-4.1 9.6-9.8 0-.7-.1-1.2-.2-1.7H12z"
+        d="M12 5.4c1.5 0 2.9.5 3.9 1.6l2.9-2.9C17.2 2.4 14.8 1.4 12 1.4 7.3 1.4 3.3 4.2 1.7 8.4l3.4 2.6C6 7.7 8.7 5.4 12 5.4z"
       />
       <path
         fill="#4285F4"
-        d="M21.6 10.8H12v3.9h5.5c-.3 1.5-1.7 3.8-5.5 3.8-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.2 14.6 2.2 12 2.2 6.9 2.2 2.8 6.3 2.8 11.4S6.9 20.6 12 20.6c5.8 0 9.6-4.1 9.6-9.8 0-.7-.1-1.2-.2-1.7z"
-        opacity="0"
+        d="M22.6 12.2c0-.8-.1-1.6-.2-2.3H12v4.4h5.9c-.3 1.4-1.1 2.6-2.3 3.4l3.5 2.7c2.1-1.9 3.5-4.8 3.5-8.2z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.1 14.3c-.3-.9-.5-1.8-.5-2.8s.2-1.9.5-2.8L1.7 6.1C.9 7.8.4 9.8.4 11.5s.5 3.7 1.3 5.4l3.4-2.6z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 22.6c2.8 0 5.1-.9 6.8-2.5l-3.5-2.7c-.9.6-2.1 1-3.3 1-3.3 0-6-2.2-7-5.3L1.7 16.9C3.3 21.1 7.3 22.6 12 22.6z"
       />
     </svg>
   );
 }
 
+function MicrosoftIcon() {
+  return (
+    <svg viewBox="0 0 23 23" className="h-5 w-5" aria-hidden>
+      <path fill="#f25022" d="M1 1h10v10H1z" />
+      <path fill="#00a4ef" d="M12 1h10v10H12z" />
+      <path fill="#7fba00" d="M1 12h10v10H1z" />
+      <path fill="#ffb900" d="M12 12h10v10H12z" />
+    </svg>
+  );
+}
+
 function LoginForm() {
-  const { login, loginWithGoogle, user, isLoading } = useAuth();
+  const { login, loginWithGoogle, loginWithMicrosoft, user, isLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -44,7 +62,9 @@ function LoginForm() {
     ERRORS[searchParams.get("error") ?? ""] ?? null,
   );
   const [submitting, setSubmitting] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<"google" | "azure" | null>(
+    null,
+  );
   const configured = isSupabaseConfigured();
 
   useEffect(() => {
@@ -53,13 +73,21 @@ function LoginForm() {
     }
   }, [isLoading, user, router]);
 
-  async function onGoogle() {
+  async function onOAuth(provider: "google" | "azure") {
     setError(null);
-    setGoogleLoading(true);
-    const result = await loginWithGoogle("/dashboard");
+    setOauthLoading(provider);
+    const result =
+      provider === "google"
+        ? await loginWithGoogle("/dashboard")
+        : await loginWithMicrosoft("/dashboard");
     if (!result.ok) {
-      setGoogleLoading(false);
-      setError(result.error ?? "No se pudo conectar con Google.");
+      setOauthLoading(null);
+      setError(
+        result.error ??
+          (provider === "google"
+            ? "No se pudo conectar con Google."
+            : "No se pudo conectar con Microsoft."),
+      );
     }
   }
 
@@ -139,7 +167,7 @@ function LoginForm() {
               Iniciar sesión
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Entrá con tu cuenta de Google.
+              Entrá con Google o Microsoft (Outlook / Hotmail).
             </p>
 
             {!configured ? (
@@ -155,15 +183,31 @@ function LoginForm() {
               </p>
             ) : null}
 
-            <Button
-              type="button"
-              className="mt-8 w-full gap-2"
-              disabled={!configured || googleLoading}
-              onClick={() => void onGoogle()}
-            >
-              <GoogleIcon />
-              {googleLoading ? "Conectando..." : "Continuar con Google"}
-            </Button>
+            <div className="mt-8 space-y-3">
+              <Button
+                type="button"
+                className="w-full gap-2"
+                disabled={!configured || oauthLoading !== null}
+                onClick={() => void onOAuth("google")}
+              >
+                <GoogleIcon />
+                {oauthLoading === "google"
+                  ? "Conectando..."
+                  : "Continuar con Google"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full gap-2"
+                disabled={!configured || oauthLoading !== null}
+                onClick={() => void onOAuth("azure")}
+              >
+                <MicrosoftIcon />
+                {oauthLoading === "azure"
+                  ? "Conectando..."
+                  : "Continuar con Microsoft"}
+              </Button>
+            </div>
 
             <div className="relative my-8">
               <div className="absolute inset-0 flex items-center">

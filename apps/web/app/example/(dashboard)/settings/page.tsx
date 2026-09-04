@@ -143,7 +143,7 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between gap-3">
               <span className="text-slate-500">Autenticación</span>
               <Badge variant={demo ? "muted" : "success"}>
-                {demo ? "Mock" : "Google / invitación"}
+                {demo ? "Mock" : "Google / Microsoft / invitación"}
               </Badge>
             </div>
             <div className="flex items-center justify-between gap-3">

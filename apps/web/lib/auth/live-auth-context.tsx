@@ -91,7 +91,7 @@ export function LiveAuthProvider({ children }: { children: ReactNode }) {
       await supabase.auth.signOut();
       return {
         ok: false,
-        error: "Esta cuenta de Google no tiene acceso.",
+        error: "Esta cuenta no tiene acceso. Pedí una invitación.",
       };
     }
     if (!profile.isActive) {
@@ -102,7 +102,10 @@ export function LiveAuthProvider({ children }: { children: ReactNode }) {
     return { ok: true };
   }, []);
 
-  const loginWithGoogle = useCallback(async (next?: string) => {
+  const startOAuth = useCallback(async (
+    provider: "google" | "azure",
+    next?: string,
+  ) => {
     if (!isSupabaseConfigured()) {
       return { ok: false, error: "Supabase no está configurado." };
     }
@@ -113,10 +116,20 @@ export function LiveAuthProvider({ children }: { children: ReactNode }) {
     const supabase = createBrowserSupabase();
     const redirectTo = `${window.location.origin}/auth/callback`;
     const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
+      provider,
       options: {
         redirectTo,
-        queryParams: { access_type: "offline", prompt: "select_account" },
+        ...(provider === "google"
+          ? {
+              queryParams: {
+                access_type: "offline",
+                prompt: "select_account",
+              },
+            }
+          : {
+              // Azure exige email para que Supabase cree el usuario
+              scopes: "email openid profile offline_access",
+            }),
       },
     });
     if (error) {
@@ -124,6 +137,16 @@ export function LiveAuthProvider({ children }: { children: ReactNode }) {
     }
     return { ok: true };
   }, []);
+
+  const loginWithGoogle = useCallback(
+    (next?: string) => startOAuth("google", next),
+    [startOAuth],
+  );
+
+  const loginWithMicrosoft = useCallback(
+    (next?: string) => startOAuth("azure", next),
+    [startOAuth],
+  );
 
   const logout = useCallback(async () => {
     writeViewAsRole(null);
@@ -181,6 +204,7 @@ export function LiveAuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       login,
       loginWithGoogle,
+      loginWithMicrosoft,
       logout,
       switchRoleDemo,
       setViewAsRole,
@@ -195,6 +219,7 @@ export function LiveAuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       login,
       loginWithGoogle,
+      loginWithMicrosoft,
       logout,
       switchRoleDemo,
       setViewAsRole,

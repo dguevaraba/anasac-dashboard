@@ -29,6 +29,7 @@ export interface AuthContextValue {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   loginWithGoogle: (next?: string) => Promise<{ ok: boolean; error?: string }>;
+  loginWithMicrosoft: (next?: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void | Promise<void>;
   switchRoleDemo: (role: Role) => void;
   setViewAsRole: (role: Role | null) => void;
@@ -119,6 +120,10 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
     return { ok: false, error: "Google no está disponible en el modo demo." };
   }, []);
 
+  const loginWithMicrosoft = useCallback(async () => {
+    return { ok: false, error: "Microsoft no está disponible en el modo demo." };
+  }, []);
+
   const logout = useCallback(() => {
     writeViewAsRole(null);
     persistUser(null);
@@ -165,6 +170,7 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       login,
       loginWithGoogle,
+      loginWithMicrosoft,
       logout,
       switchRoleDemo,
       setViewAsRole,
@@ -179,6 +185,7 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       login,
       loginWithGoogle,
+      loginWithMicrosoft,
       logout,
       switchRoleDemo,
       setViewAsRole,

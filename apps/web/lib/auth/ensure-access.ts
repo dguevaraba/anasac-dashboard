@@ -42,7 +42,7 @@ export async function ensureAccessAfterLogin(params: {
     return {
       status: "no_access",
       reason:
-        "Esta cuenta de Google no tiene acceso.",
+        "Esta cuenta no tiene acceso. Pedí una invitación.",
     };
   }
 

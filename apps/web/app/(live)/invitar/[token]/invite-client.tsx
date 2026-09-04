@@ -7,6 +7,17 @@ import { Bubbles } from "@/components/ui/bubbles";
 import { useAuth } from "@/lib/auth/auth-context";
 import { ROLE_LABELS } from "@/lib/auth/permissions";
 
+function MicrosoftIcon() {
+  return (
+    <svg viewBox="0 0 23 23" className="h-5 w-5" aria-hidden>
+      <path fill="#f25022" d="M1 1h10v10H1z" />
+      <path fill="#00a4ef" d="M12 1h10v10H12z" />
+      <path fill="#7fba00" d="M1 12h10v10H1z" />
+      <path fill="#ffb900" d="M12 12h10v10H12z" />
+    </svg>
+  );
+}
+
 export function InviteClient({
   token,
   roleName,
@@ -16,18 +27,30 @@ export function InviteClient({
   roleName: string;
   fullName: string | null;
 }) {
-  const { loginWithGoogle, user, logout, isLoading } = useAuth();
+  const { loginWithGoogle, loginWithMicrosoft, user, logout, isLoading } =
+    useAuth();
   const [error, setError] = useState<string | null>(null);
-  const [googleLoading, setGoogleLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<"google" | "azure" | null>(
+    null,
+  );
   const [signingOut, setSigningOut] = useState(false);
 
-  async function onGoogle() {
+  async function onOAuth(provider: "google" | "azure") {
     setError(null);
-    setGoogleLoading(true);
-    const result = await loginWithGoogle(`/invitar/${token}`);
+    setOauthLoading(provider);
+    const next = `/invitar/${token}`;
+    const result =
+      provider === "google"
+        ? await loginWithGoogle(next)
+        : await loginWithMicrosoft(next);
     if (!result.ok) {
-      setGoogleLoading(false);
-      setError(result.error ?? "No se pudo conectar con Google.");
+      setOauthLoading(null);
+      setError(
+        result.error ??
+          (provider === "google"
+            ? "No se pudo conectar con Google."
+            : "No se pudo conectar con Microsoft."),
+      );
     }
   }
 
@@ -98,16 +121,32 @@ export function InviteClient({
           ) : (
             <>
               <p className="mt-4 text-center text-sm text-slate-500">
-                Entrá con tu Gmail para unirte.
+                Entrá con Google o Microsoft (Outlook / Hotmail) para unirte.
               </p>
-              <Button
-                type="button"
-                className="mt-6 w-full"
-                disabled={googleLoading}
-                onClick={() => void onGoogle()}
-              >
-                {googleLoading ? "Conectando..." : "Continuar con Google"}
-              </Button>
+              <div className="mt-6 space-y-3">
+                <Button
+                  type="button"
+                  className="w-full"
+                  disabled={oauthLoading !== null}
+                  onClick={() => void onOAuth("google")}
+                >
+                  {oauthLoading === "google"
+                    ? "Conectando..."
+                    : "Continuar con Google"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full gap-2"
+                  disabled={oauthLoading !== null}
+                  onClick={() => void onOAuth("azure")}
+                >
+                  <MicrosoftIcon />
+                  {oauthLoading === "azure"
+                    ? "Conectando..."
+                    : "Continuar con Microsoft"}
+                </Button>
+              </div>
             </>
           )}
         </div>
