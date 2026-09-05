@@ -76,10 +76,11 @@ export function periodoWidgetsPagos(pagos: PagoResumenFila[]) {
 
 export function resumenMensualidad(pagos: PagoResumenFila[]) {
   const now = new Date();
-  const period = periodoWidgetsPagos(pagos);
-  const dueDate = `${period}-15`;
+  const periodCorte = mesActualIso();
+  const periodPendientes = periodoWidgetsPagos(pagos);
+  const dueDate = `${periodCorte}-15`;
   const pendientes = pagos.filter(
-    (p) => p.period === period && p.status !== "pagado",
+    (p) => p.period === periodPendientes && p.status !== "pagado",
   );
   return {
     dueDate,

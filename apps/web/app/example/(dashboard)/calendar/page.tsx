@@ -29,6 +29,7 @@ export default function CalendarPage() {
             endAt: e.endAt,
             location: e.location ?? null,
             type: e.type as TipoEventoCalendario,
+            imageUrl: e.imageUrl ?? null,
           }))}
       />
     </div>

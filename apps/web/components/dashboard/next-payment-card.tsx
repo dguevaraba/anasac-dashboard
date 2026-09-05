@@ -92,7 +92,7 @@ export function NextPaymentCard({
             )}
           >
             <p className="text-[10px] uppercase tracking-wide text-white/60">
-              Días restantes
+              {isOverdue ? "Días de atraso" : "Días restantes"}
             </p>
             <p
               className={cn(
@@ -104,7 +104,7 @@ export function NextPaymentCard({
             </p>
             <p className="text-[11px] text-white/70">
               {isOverdue
-                ? "días de atraso"
+                ? "después del límite"
                 : isToday
                   ? "vence hoy"
                   : data.daysRemaining === 1
@@ -144,7 +144,7 @@ export function NextPaymentCard({
           <div className={cn("flex flex-wrap items-center gap-2", compact ? "mt-3" : "mt-4")}>
             {showBadge ? (
               <Badge className="bg-white/15 text-white hover:bg-white/20">
-                {isToday ? "Vence hoy" : "Próximo"}
+                {isOverdue ? "Vencido" : isToday ? "Vence hoy" : "Próximo"}
               </Badge>
             ) : null}
             {showLink && can("payments:view") ? (

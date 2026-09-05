@@ -27,7 +27,7 @@ export default async function CalendarPage({
   const supabase = await createServerSupabase();
   const { data } = await supabase
     .from("calendar_events")
-    .select("id, title, description, start_at, end_at, location, type")
+    .select("id, title, description, start_at, end_at, location, type, image_url")
     .order("start_at", { ascending: true });
 
   const eventos: CalendarioEvento[] = (data ?? [])
@@ -39,6 +39,7 @@ export default async function CalendarPage({
       endAt: String(row.end_at),
       location: (row.location as string | null) ?? null,
       type: row.type as CalendarioEvento["type"],
+      imageUrl: (row.image_url as string | null) ?? null,
     }))
     .filter(
       (e) =>

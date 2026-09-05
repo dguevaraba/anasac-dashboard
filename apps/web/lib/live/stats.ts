@@ -19,6 +19,7 @@ export type ProximoEventoDashboard = {
   endAt: string;
   location: string | null;
   type: TipoEventoCalendario;
+  imageUrl: string | null;
 };
 
 export async function getLiveDashboardStats() {
@@ -72,7 +73,7 @@ export async function getProximosEventosDashboard(
   const now = new Date().toISOString();
   const { data } = await supabase
     .from("calendar_events")
-    .select("id, title, start_at, end_at, location, type")
+    .select("id, title, start_at, end_at, location, type, image_url")
     .gte("start_at", now)
     .neq("type", "entrenamiento")
     .order("start_at", { ascending: true })
@@ -92,5 +93,6 @@ export async function getProximosEventosDashboard(
       endAt: String(row.end_at),
       location: (row.location as string | null) ?? null,
       type: row.type as TipoEventoCalendario,
+      imageUrl: (row.image_url as string | null) ?? null,
     }));
 }

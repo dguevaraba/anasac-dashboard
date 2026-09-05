@@ -49,6 +49,7 @@ export type CalendarioEvento = {
   endAt: string;
   location?: string | null;
   type: TipoEventoCalendario;
+  imageUrl?: string | null;
 };
 
 const TYPE_VARIANT = {
@@ -252,6 +253,31 @@ function FormularioEvento({
               name="description"
               defaultValue={evento?.description ?? ""}
             />
+          </div>
+          <div className="space-y-1 md:col-span-2">
+            <Label htmlFor="image">Imagen (opcional)</Label>
+            {evento?.imageUrl ? (
+              <div className="mb-2 overflow-hidden rounded-xl border border-[var(--anasac-border)]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={evento.imageUrl}
+                  alt=""
+                  className="h-36 w-full object-cover"
+                />
+              </div>
+            ) : null}
+            <Input
+              id="image"
+              name="image"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+            />
+            {evento?.imageUrl ? (
+              <label className="mt-2 flex items-center gap-2 text-sm text-slate-600">
+                <input type="checkbox" name="clearImage" value="1" />
+                Quitar imagen actual
+              </label>
+            ) : null}
           </div>
           <div className="flex gap-2 md:col-span-2">
             <Button type="submit" disabled={guardando}>
@@ -744,14 +770,23 @@ export function GestorCalendario({
                             )}
                           />
                           <div className="flex items-start gap-2 pl-1">
-                            <span
-                              className={cn(
-                                "mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
-                                style.iconWrap,
-                              )}
-                            >
-                              <Icon className="h-4 w-4" />
-                            </span>
+                            {event.imageUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={event.imageUrl}
+                                alt=""
+                                className="mt-0.5 h-14 w-14 shrink-0 rounded-lg object-cover"
+                              />
+                            ) : (
+                              <span
+                                className={cn(
+                                  "mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                                  style.iconWrap,
+                                )}
+                              >
+                                <Icon className="h-4 w-4" />
+                              </span>
+                            )}
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-2">
                                 <p className="font-semibold text-[var(--anasac-navy)]">
@@ -811,14 +846,23 @@ export function GestorCalendario({
                       )}
                     >
                       <div className="flex min-w-0 flex-1 gap-3">
-                        <span
-                          className={cn(
-                            "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-sm",
-                            style.iconWrap,
-                          )}
-                        >
-                          <Icon className="h-5 w-5" />
-                        </span>
+                        {event.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={event.imageUrl}
+                            alt=""
+                            className="h-14 w-14 shrink-0 rounded-xl object-cover shadow-sm"
+                          />
+                        ) : (
+                          <span
+                            className={cn(
+                              "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-sm",
+                              style.iconWrap,
+                            )}
+                          >
+                            <Icon className="h-5 w-5" />
+                          </span>
+                        )}
                         <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="font-semibold text-[var(--anasac-navy)]">

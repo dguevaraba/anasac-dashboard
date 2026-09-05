@@ -124,6 +124,7 @@ export interface CalendarEvent {
   location?: string;
   type: "competencia" | "entrenamiento" | "reunion" | "otro";
   competitionId?: string;
+  imageUrl?: string;
 }
 
 export interface NotificationItem {

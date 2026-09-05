@@ -24,8 +24,9 @@ import {
 } from "@/components/ui/table";
 import { appHref, useAppConfig } from "@/lib/app-config";
 import { useAuth } from "@/lib/auth/auth-context";
-import { daysUntil, formatCrc } from "@/lib/mock/analytics";
+import { formatCrc } from "@/lib/mock/analytics";
 import { calcularIva, IVA_RATE, montoTotalPago } from "@/lib/pagos/iva";
+import { resumenMensualidad } from "@/lib/pagos/resumen-dashboard";
 import { cn, formatDate } from "@/lib/utils";
 import { ModalExportarPagos } from "@/components/pagos/modal-exportar-pagos";
 import { ModalIvaPagos } from "@/components/pagos/modal-iva-pagos";
@@ -73,21 +74,6 @@ const MESES_CORTO = [
   "Dic",
 ] as const;
 
-const MESES_LARGO = [
-  "Enero",
-  "Febrero",
-  "Marzo",
-  "Abril",
-  "Mayo",
-  "Junio",
-  "Julio",
-  "Agosto",
-  "Septiembre",
-  "Octubre",
-  "Noviembre",
-  "Diciembre",
-] as const;
-
 function mesActualIso() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -96,22 +82,6 @@ function mesActualIso() {
 function mesAnteriorIso(desde = new Date()) {
   const d = new Date(desde.getFullYear(), desde.getMonth() - 1, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function cobroMesEnCurso(pagos: PagoItem[]) {
-  const now = new Date();
-  const period = mesActualIso();
-  const dueDate = `${period}-15`;
-  const pendientes = pagos.filter(
-    (p) => p.period === period && p.status !== "pagado",
-  );
-  return {
-    dueDate,
-    daysRemaining: daysUntil(dueDate),
-    pendingAmount: pendientes.reduce((s, p) => s + montoTotalPago(p), 0),
-    pendingCount: pendientes.length,
-    monthLabel: `${MESES_LARGO[now.getMonth()]} ${now.getFullYear()}`,
-  };
 }
 
 function etiquetaPeriodo(period: string) {
@@ -212,17 +182,7 @@ export function GestorPagos({
     cerrarFormulario();
   }
 
-  const proximo = useMemo(() => {
-    const corte = cobroMesEnCurso(pagos);
-    const pendientes = pagos.filter(
-      (p) => p.period === periodoWidgets && p.status !== "pagado",
-    );
-    return {
-      ...corte,
-      pendingAmount: pendientes.reduce((s, p) => s + montoTotalPago(p), 0),
-      pendingCount: pendientes.length,
-    };
-  }, [pagos, periodoWidgets]);
+  const proximo = useMemo(() => resumenMensualidad(pagos), [pagos]);
 
   const totalesMes = useMemo(() => {
     const delMes = pagos.filter((p) => p.period === periodoWidgets);

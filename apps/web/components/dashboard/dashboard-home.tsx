@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CreditCard, Waves } from "lucide-react";
+import { CalendarDays, CreditCard, Waves } from "lucide-react";
 import { EmptyState } from "@/components/layout/empty-state";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { DashboardPagosWidgets } from "@/components/dashboard/dashboard-pagos-widgets";
@@ -16,6 +16,7 @@ import {
   type TipoEventoCalendario,
 } from "@/lib/calendario/permisos";
 import type { ProximoEventoDashboard } from "@/lib/live/stats";
+import { daysUntil } from "@/lib/mock/analytics";
 import { formatDateTime } from "@/lib/utils";
 
 type Mensualidad = {
@@ -83,6 +84,16 @@ export function DashboardHome({
   );
   const proximosCount = eventosVisibles.length;
   const eventosLista = eventosVisibles.slice(0, 8);
+  const proximoEvento = eventosVisibles[0] ?? null;
+  const diasProximoEvento = proximoEvento
+    ? daysUntil(claveDiaCostaRica(proximoEvento.startAt))
+    : null;
+  const hrefProximo = proximoEvento
+    ? appHref(
+        basePath,
+        `/calendar?dia=${claveDiaCostaRica(proximoEvento.startAt)}`,
+      )
+    : appHref(basePath, "/calendar");
 
   const empty =
     (!puedeVerNadadores || stats.swimmers === 0) &&
@@ -90,9 +101,22 @@ export function DashboardHome({
     (!puedeVerPagos || pagosCount === 0);
 
   const cardCount =
-    (puedeVerNadadores ? 1 : 0) + (puedeVerPagos ? 1 : 0);
+    (puedeVerNadadores ? 1 : 0) +
+    (puedeVerPagos ? 1 : 0) +
+    (puedeVerCalendario ? 1 : 0);
   const cols =
-    cardCount >= 2 ? "sm:grid-cols-2" : "sm:grid-cols-1";
+    cardCount >= 3
+      ? "sm:grid-cols-2 xl:grid-cols-3"
+      : cardCount === 2
+        ? "sm:grid-cols-2"
+        : "sm:grid-cols-1";
+
+  let hintDias = "Sin eventos próximos";
+  if (diasProximoEvento != null && proximoEvento) {
+    if (diasProximoEvento === 0) hintDias = proximoEvento.title;
+    else if (diasProximoEvento === 1) hintDias = `Mañana · ${proximoEvento.title}`;
+    else hintDias = proximoEvento.title;
+  }
 
   return (
     <>
@@ -120,6 +144,21 @@ export function DashboardHome({
               href="/pagos"
             />
           ) : null}
+          {puedeVerCalendario ? (
+            <StatCard
+              title="Días al próximo evento"
+              value={
+                diasProximoEvento == null
+                  ? "—"
+                  : diasProximoEvento === 0
+                    ? "Hoy"
+                    : Math.max(0, diasProximoEvento)
+              }
+              hint={hintDias}
+              icon={<CalendarDays className="h-5 w-5" />}
+              href={hrefProximo}
+            />
+          ) : null}
         </div>
       ) : null}
 
@@ -131,59 +170,76 @@ export function DashboardHome({
       ) : null}
 
       {puedeVerCalendario ? (
-        <div className="mt-6 grid gap-6 lg:grid-cols-2">
-          <Card bubbles bubblePreset="card">
-            <CardHeader>
-              <CardTitle>Próximos eventos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {eventosLista.length === 0 ? (
-                <p className="text-sm text-slate-500">
-                  No hay eventos próximos para tu rol.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {eventosLista.map((event, index) => {
-                    const dia = claveDiaCostaRica(event.startAt);
-                    const href = appHref(basePath, `/calendar?dia=${dia}`);
-                    const tipo = etiquetaTipoEvento(event.type);
-                    const esProximo = index === 0;
+        <Card className="mt-6" bubbles bubblePreset="card">
+          <CardHeader>
+            <CardTitle>Próximos eventos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {eventosLista.length === 0 ? (
+              <p className="text-sm text-slate-500">
+                No hay eventos próximos para tu rol.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {eventosLista.map((event, index) => {
+                  const dia = claveDiaCostaRica(event.startAt);
+                  const href = appHref(basePath, `/calendar?dia=${dia}`);
+                  const tipo = etiquetaTipoEvento(event.type);
+                  const esProximo = index === 0;
 
-                    if (esProximo) {
-                      return (
-                        <Link
-                          key={event.id}
-                          href={href}
-                          className="relative block overflow-hidden rounded-xl bg-[linear-gradient(135deg,#1a7a72_0%,#2e768d_45%,#3ecfc0_120%)] p-4 text-white transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--anasac-aqua)] focus-visible:ring-offset-2"
-                        >
-                          <Bubbles preset="hero" />
-                          <div className="relative z-[1]">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--anasac-aqua)]">
-                              Próximo · {tipo}
-                            </p>
-                            <h3 className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold">
-                              {event.title}
-                            </h3>
-                            {event.location ? (
-                              <p className="mt-2 text-sm text-white/80">
-                                {event.location}
-                              </p>
-                            ) : null}
-                            <p className="mt-1 text-sm text-white/70">
-                              {formatDateTime(event.startAt)}
-                            </p>
-                          </div>
-                        </Link>
-                      );
-                    }
-
+                  if (esProximo) {
                     return (
                       <Link
                         key={event.id}
                         href={href}
-                        className="relative block overflow-hidden rounded-xl border border-[var(--anasac-border)] bg-white px-3 py-3 transition hover:border-[var(--anasac-teal)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--anasac-teal)]"
+                        className="relative block overflow-hidden rounded-xl bg-[linear-gradient(135deg,#1a7a72_0%,#2e768d_45%,#3ecfc0_120%)] text-white transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--anasac-aqua)] focus-visible:ring-offset-2"
                       >
-                        <div className="relative z-[1] flex items-start justify-between gap-2">
+                        {event.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={event.imageUrl}
+                            alt=""
+                            className="absolute inset-0 h-full w-full object-cover opacity-35"
+                          />
+                        ) : (
+                          <Bubbles preset="hero" />
+                        )}
+                        <div className="relative z-[1] p-4">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--anasac-aqua)]">
+                            Próximo · {tipo}
+                          </p>
+                          <h3 className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold">
+                            {event.title}
+                          </h3>
+                          {event.location ? (
+                            <p className="mt-2 text-sm text-white/80">
+                              {event.location}
+                            </p>
+                          ) : null}
+                          <p className="mt-1 text-sm text-white/70">
+                            {formatDateTime(event.startAt)}
+                          </p>
+                        </div>
+                      </Link>
+                    );
+                  }
+
+                  return (
+                    <Link
+                      key={event.id}
+                      href={href}
+                      className="relative flex gap-3 overflow-hidden rounded-xl border border-[var(--anasac-border)] bg-white px-3 py-3 transition hover:border-[var(--anasac-teal)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--anasac-teal)]"
+                    >
+                      {event.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={event.imageUrl}
+                          alt=""
+                          className="h-12 w-12 shrink-0 rounded-lg object-cover"
+                        />
+                      ) : null}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
                           <p className="text-sm font-semibold text-[var(--anasac-navy)]">
                             {event.title}
                           </p>
@@ -200,27 +256,24 @@ export function DashboardHome({
                             {tipo}
                           </Badge>
                         </div>
-                        <p className="relative z-[1] mt-1 text-xs text-slate-500">
+                        <p className="mt-1 text-xs text-slate-500">
                           {formatDateTime(event.startAt)}
                           {event.location ? ` · ${event.location}` : ""}
                         </p>
-                      </Link>
-                    );
-                  })}
-                  <Link
-                    href={appHref(basePath, "/calendar")}
-                    className="inline-block text-sm font-semibold text-[var(--anasac-teal)] hover:underline"
-                  >
-                    Ver calendario →
-                  </Link>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Espacio reservado para el otro 50% */}
-          <div aria-hidden className="hidden lg:block" />
-        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+                <Link
+                  href={appHref(basePath, "/calendar")}
+                  className="inline-block text-sm font-semibold text-[var(--anasac-teal)] hover:underline"
+                >
+                  Ver calendario →
+                </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       ) : null}
 
       {empty ? (
