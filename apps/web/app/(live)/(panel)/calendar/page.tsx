@@ -1,22 +1,19 @@
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Bubbles } from "@/components/ui/bubbles";
+import {
+  GestorCalendario,
+  type CalendarioEvento,
+} from "@/components/calendario/gestor-calendario";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-const TYPE_VARIANT = {
-  competencia: "navy",
-  entrenamiento: "default",
-  reunion: "warning",
-  otro: "muted",
-} as const;
-
-export default async function CalendarPage() {
+export default async function CalendarPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ dia?: string }>;
+}) {
   if (!isSupabaseConfigured()) {
     return (
       <EmptyState
@@ -26,13 +23,30 @@ export default async function CalendarPage() {
     );
   }
 
+  const { dia } = await searchParams;
   const supabase = await createServerSupabase();
   const { data } = await supabase
     .from("calendar_events")
     .select("id, title, description, start_at, end_at, location, type")
     .order("start_at", { ascending: true });
 
-  const rows = data ?? [];
+  const eventos: CalendarioEvento[] = (data ?? [])
+    .map((row) => ({
+      id: row.id as string,
+      title: row.title as string,
+      description: (row.description as string | null) ?? null,
+      startAt: String(row.start_at),
+      endAt: String(row.end_at),
+      location: (row.location as string | null) ?? null,
+      type: row.type as CalendarioEvento["type"],
+    }))
+    .filter(
+      (e) =>
+        e.type === "competencia" ||
+        e.type === "entrenamiento" ||
+        e.type === "reunion" ||
+        e.type === "otro",
+    );
 
   return (
     <div>
@@ -40,38 +54,7 @@ export default async function CalendarPage() {
         title="Calendario"
         description="Eventos, entrenamientos y competencias programadas."
       />
-      {rows.length === 0 ? (
-        <EmptyState
-          title="El calendario está vacío"
-          description="Cuando se agenden entrenamientos o competencias, van a aparecer acá."
-        />
-      ) : (
-        <div className="space-y-3">
-          {rows.map((event) => (
-            <Card key={event.id} bubbles bubblePreset="card">
-              <CardContent className="relative overflow-hidden p-4">
-                <Bubbles preset="card" className="opacity-50" />
-                <div className="relative z-[1] flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-semibold text-[var(--anasac-navy)]">{event.title}</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {formatDateTime(event.start_at)}
-                      {event.location ? ` · ${event.location}` : ""}
-                    </p>
-                  </div>
-                  <Badge
-                    variant={
-                      TYPE_VARIANT[event.type as keyof typeof TYPE_VARIANT] ?? "muted"
-                    }
-                  >
-                    {event.type}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      <GestorCalendario eventos={eventos} diaInicial={dia ?? null} />
     </div>
   );
 }

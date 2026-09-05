@@ -1,10 +1,22 @@
 "use client";
 
-import { CalendarDays, CreditCard, Trophy, Waves } from "lucide-react";
+import Link from "next/link";
+import { CreditCard, Waves } from "lucide-react";
 import { EmptyState } from "@/components/layout/empty-state";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { DashboardPagosWidgets } from "@/components/dashboard/dashboard-pagos-widgets";
+import { Badge } from "@/components/ui/badge";
+import { Bubbles } from "@/components/ui/bubbles";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth/auth-context";
+import { appHref, useAppConfig } from "@/lib/app-config";
+import {
+  etiquetaTipoEvento,
+  puedeVerTipoEvento,
+  type TipoEventoCalendario,
+} from "@/lib/calendario/permisos";
+import type { ProximoEventoDashboard } from "@/lib/live/stats";
+import { formatDateTime } from "@/lib/utils";
 
 type Mensualidad = {
   dueDate: string;
@@ -23,11 +35,30 @@ type ChartPoint = {
   cobertura: number;
 };
 
+const TYPE_VARIANT: Record<
+  Exclude<TipoEventoCalendario, "entrenamiento">,
+  "navy" | "warning" | "muted"
+> = {
+  competencia: "navy",
+  reunion: "warning",
+  otro: "muted",
+};
+
+function claveDiaCostaRica(iso: string) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Costa_Rica",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
+}
+
 export function DashboardHome({
   stats,
   pagosCount,
   mensualidad,
   chartData,
+  proximosEventos,
 }: {
   stats: {
     swimmers: number;
@@ -38,62 +69,158 @@ export function DashboardHome({
   pagosCount: number;
   mensualidad: Mensualidad | null;
   chartData: ChartPoint[];
+  proximosEventos: ProximoEventoDashboard[];
 }) {
-  const { can } = useAuth();
+  const { can, user } = useAuth();
+  const { basePath } = useAppConfig();
+  const role = user?.role ?? null;
   const puedeVerPagos = can("payments:view");
+  const puedeVerNadadores = can("swimmers:view");
+  const puedeVerCalendario = can("calendar:view");
+
+  const eventosVisibles = proximosEventos.filter((e) =>
+    puedeVerTipoEvento(role, e.type),
+  );
+  const proximosCount = eventosVisibles.length;
+  const eventosLista = eventosVisibles.slice(0, 8);
 
   const empty =
-    stats.swimmers === 0 &&
-    stats.competitions === 0 &&
-    stats.upcomingEvents === 0 &&
+    (!puedeVerNadadores || stats.swimmers === 0) &&
+    (!puedeVerCalendario || proximosCount === 0) &&
     (!puedeVerPagos || pagosCount === 0);
 
-  const cols = puedeVerPagos
-    ? "sm:grid-cols-2 xl:grid-cols-4"
-    : "sm:grid-cols-2 xl:grid-cols-3";
+  const cardCount =
+    (puedeVerNadadores ? 1 : 0) + (puedeVerPagos ? 1 : 0);
+  const cols =
+    cardCount >= 2 ? "sm:grid-cols-2" : "sm:grid-cols-1";
 
   return (
     <>
-      <div className={`grid gap-4 ${cols}`}>
-        <StatCard
-          title="Nadadores"
-          value={stats.swimmers}
-          hint={`${stats.activeSwimmers} activos`}
-          icon={<Waves className="h-5 w-5" />}
-          href="/nadadores"
-        />
-        <StatCard
-          title="Competencias"
-          value={stats.competitions}
-          hint="Temporada actual"
-          icon={<Trophy className="h-5 w-5" />}
-        />
-        <StatCard
-          title="Próximos eventos"
-          value={stats.upcomingEvents}
-          hint="En el calendario"
-          icon={<CalendarDays className="h-5 w-5" />}
-        />
-        {puedeVerPagos ? (
-          <StatCard
-            title="Pagos"
-            value={pagosCount}
-            hint={
-              pagosCount === 0
-                ? "Sin cobros aún"
-                : `${mensualidad?.pendingCount ?? 0} pendiente${(mensualidad?.pendingCount ?? 0) === 1 ? "" : "s"} del mes`
-            }
-            icon={<CreditCard className="h-5 w-5" />}
-            href="/pagos"
-          />
-        ) : null}
-      </div>
+      {cardCount > 0 ? (
+        <div className={`grid gap-4 ${cols}`}>
+          {puedeVerNadadores ? (
+            <StatCard
+              title="Nadadores"
+              value={stats.swimmers}
+              hint={`${stats.activeSwimmers} activos`}
+              icon={<Waves className="h-5 w-5" />}
+              href="/nadadores"
+            />
+          ) : null}
+          {puedeVerPagos ? (
+            <StatCard
+              title="Pagos"
+              value={pagosCount}
+              hint={
+                pagosCount === 0
+                  ? "Sin cobros aún"
+                  : `${mensualidad?.pendingCount ?? 0} pendiente${(mensualidad?.pendingCount ?? 0) === 1 ? "" : "s"} del mes`
+              }
+              icon={<CreditCard className="h-5 w-5" />}
+              href="/pagos"
+            />
+          ) : null}
+        </div>
+      ) : null}
 
       {puedeVerPagos && mensualidad ? (
         <DashboardPagosWidgets
           mensualidad={mensualidad}
           chartData={chartData}
         />
+      ) : null}
+
+      {puedeVerCalendario ? (
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <Card bubbles bubblePreset="card">
+            <CardHeader>
+              <CardTitle>Próximos eventos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {eventosLista.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  No hay eventos próximos para tu rol.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {eventosLista.map((event, index) => {
+                    const dia = claveDiaCostaRica(event.startAt);
+                    const href = appHref(basePath, `/calendar?dia=${dia}`);
+                    const tipo = etiquetaTipoEvento(event.type);
+                    const esProximo = index === 0;
+
+                    if (esProximo) {
+                      return (
+                        <Link
+                          key={event.id}
+                          href={href}
+                          className="relative block overflow-hidden rounded-xl bg-[linear-gradient(135deg,#1a7a72_0%,#2e768d_45%,#3ecfc0_120%)] p-4 text-white transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--anasac-aqua)] focus-visible:ring-offset-2"
+                        >
+                          <Bubbles preset="hero" />
+                          <div className="relative z-[1]">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--anasac-aqua)]">
+                              Próximo · {tipo}
+                            </p>
+                            <h3 className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold">
+                              {event.title}
+                            </h3>
+                            {event.location ? (
+                              <p className="mt-2 text-sm text-white/80">
+                                {event.location}
+                              </p>
+                            ) : null}
+                            <p className="mt-1 text-sm text-white/70">
+                              {formatDateTime(event.startAt)}
+                            </p>
+                          </div>
+                        </Link>
+                      );
+                    }
+
+                    return (
+                      <Link
+                        key={event.id}
+                        href={href}
+                        className="relative block overflow-hidden rounded-xl border border-[var(--anasac-border)] bg-white px-3 py-3 transition hover:border-[var(--anasac-teal)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--anasac-teal)]"
+                      >
+                        <div className="relative z-[1] flex items-start justify-between gap-2">
+                          <p className="text-sm font-semibold text-[var(--anasac-navy)]">
+                            {event.title}
+                          </p>
+                          <Badge
+                            variant={
+                              TYPE_VARIANT[
+                                event.type as Exclude<
+                                  TipoEventoCalendario,
+                                  "entrenamiento"
+                                >
+                              ] ?? "muted"
+                            }
+                          >
+                            {tipo}
+                          </Badge>
+                        </div>
+                        <p className="relative z-[1] mt-1 text-xs text-slate-500">
+                          {formatDateTime(event.startAt)}
+                          {event.location ? ` · ${event.location}` : ""}
+                        </p>
+                      </Link>
+                    );
+                  })}
+                  <Link
+                    href={appHref(basePath, "/calendar")}
+                    className="inline-block text-sm font-semibold text-[var(--anasac-teal)] hover:underline"
+                  >
+                    Ver calendario →
+                  </Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Espacio reservado para el otro 50% */}
+          <div aria-hidden className="hidden lg:block" />
+        </div>
       ) : null}
 
       {empty ? (

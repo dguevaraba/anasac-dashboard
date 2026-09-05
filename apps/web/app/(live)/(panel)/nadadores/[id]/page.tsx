@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/layout/empty-state";
+import { hasPermission } from "@/lib/auth/permissions";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
   puedeVerDatosSensiblesNadador,
@@ -36,6 +37,10 @@ export default async function PaginaFichaNadador({
   }
 
   const { supabase, role } = await rolActualNadadores();
+  if (!role || !hasPermission(role, "swimmers:view")) {
+    notFound();
+  }
+
   const verSensibles = puedeVerDatosSensiblesNadador(role);
 
   const [{ data: row }, { data: filasCategorias }, { data: filasEntrenadores }] =

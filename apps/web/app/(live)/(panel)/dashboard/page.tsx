@@ -4,7 +4,10 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { fetchProfileById } from "@/lib/auth/profile";
 import { hasPermission } from "@/lib/auth/permissions";
-import { getLiveDashboardStats } from "@/lib/live/stats";
+import {
+  getLiveDashboardStats,
+  getProximosEventosDashboard,
+} from "@/lib/live/stats";
 import {
   resumenMensualidad,
   serieCobranzaUltimosMeses,
@@ -13,7 +16,10 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const stats = await getLiveDashboardStats();
+  const [stats, proximosEventos] = await Promise.all([
+    getLiveDashboardStats(),
+    getProximosEventosDashboard(),
+  ]);
   let firstName = "";
   let mensualidad: ReturnType<typeof resumenMensualidad> | null = null;
   let chartData: ReturnType<typeof serieCobranzaUltimosMeses> = [];
@@ -64,6 +70,7 @@ export default async function DashboardPage() {
         pagosCount={pagosCount}
         mensualidad={mensualidad}
         chartData={chartData}
+        proximosEventos={proximosEventos}
       />
     </div>
   );

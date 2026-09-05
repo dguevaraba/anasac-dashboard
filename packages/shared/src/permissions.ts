@@ -34,7 +34,6 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ],
   nadador: [
     "dashboard:view",
-    "swimmers:view",
     "competitions:view",
     "calendar:view",
     "results:view",
@@ -46,6 +45,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "coaches:view",
     "competitions:view",
     "calendar:view",
+    "calendar:manage",
     "results:view",
     "settings:view",
   ],

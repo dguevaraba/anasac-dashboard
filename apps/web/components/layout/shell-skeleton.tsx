@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { CalendarioSkeleton } from "@/components/calendario/calendario-skeleton";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { FichaNadadorSkeleton } from "@/components/nadadores/ficha-nadador-skeleton";
 import { NadadoresSkeleton } from "@/components/nadadores/nadadores-skeleton";
@@ -12,9 +13,10 @@ import { useAppConfig } from "@/lib/app-config";
 function ContenidoSkeleton() {
   const pathname = usePathname();
   const { basePath } = useAppConfig();
-  const path = basePath && pathname.startsWith(basePath)
-    ? pathname.slice(basePath.length) || "/"
-    : pathname;
+  const path =
+    basePath && pathname.startsWith(basePath)
+      ? pathname.slice(basePath.length) || "/"
+      : pathname;
 
   if (path === "/nadadores") {
     return <NadadoresSkeleton />;
@@ -34,6 +36,14 @@ function ContenidoSkeleton() {
     path.startsWith("/payments/")
   ) {
     return <FichaPagoSkeleton />;
+  }
+
+  if (path === "/calendar" || path === "/calendario") {
+    return <CalendarioSkeleton />;
+  }
+
+  if (path === "/dashboard" || path === "/") {
+    return <DashboardSkeleton />;
   }
 
   return <DashboardSkeleton />;

@@ -1,5 +1,6 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import type { TipoEventoCalendario } from "@/lib/calendario/permisos";
 
 async function countRows(
   table: "swimmers" | "competitions" | "results" | "calendar_events" | "coaches",
@@ -10,6 +11,15 @@ async function countRows(
     .select("id", { count: "exact", head: true });
   return count ?? 0;
 }
+
+export type ProximoEventoDashboard = {
+  id: string;
+  title: string;
+  startAt: string;
+  endAt: string;
+  location: string | null;
+  type: TipoEventoCalendario;
+};
 
 export async function getLiveDashboardStats() {
   if (!isSupabaseConfigured()) {
@@ -38,6 +48,7 @@ export async function getLiveDashboardStats() {
         .from("calendar_events")
         .select("id", { count: "exact", head: true })
         .gte("start_at", now)
+        .neq("type", "entrenamiento")
         .then((r) => r.count ?? 0),
       countRows("results"),
     ]);
@@ -49,4 +60,37 @@ export async function getLiveDashboardStats() {
     upcomingEvents,
     results,
   };
+}
+
+/** Próximos eventos del home: todo excepto entrenamientos. */
+export async function getProximosEventosDashboard(
+  limit = 100,
+): Promise<ProximoEventoDashboard[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const supabase = await createServerSupabase();
+  const now = new Date().toISOString();
+  const { data } = await supabase
+    .from("calendar_events")
+    .select("id, title, start_at, end_at, location, type")
+    .gte("start_at", now)
+    .neq("type", "entrenamiento")
+    .order("start_at", { ascending: true })
+    .limit(limit);
+
+  return (data ?? [])
+    .filter(
+      (row) =>
+        row.type === "competencia" ||
+        row.type === "reunion" ||
+        row.type === "otro",
+    )
+    .map((row) => ({
+      id: row.id as string,
+      title: row.title as string,
+      startAt: String(row.start_at),
+      endAt: String(row.end_at),
+      location: (row.location as string | null) ?? null,
+      type: row.type as TipoEventoCalendario,
+    }));
 }

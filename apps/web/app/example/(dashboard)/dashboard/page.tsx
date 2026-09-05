@@ -46,6 +46,8 @@ export default function DashboardPage() {
     .filter((c) => c.status === "programada" || c.status === "en_curso")
     .sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
   const upcoming = [...calendarEvents]
+    .filter((e) => e.type !== "entrenamiento")
+    .filter((e) => e.startAt >= new Date().toISOString())
     .sort((a, b) => a.startAt.localeCompare(b.startAt))
     .slice(0, 4);
   const recentResults = [...results]
@@ -83,6 +85,7 @@ export default function DashboardPage() {
           value={upcoming[0] ? formatDate(upcoming[0].startAt) : "—"}
           hint={upcoming[0]?.title}
           icon={<CalendarDays className="h-5 w-5" />}
+          href={appHref(basePath, "/calendar")}
         />
         <StatCard
           title="Resultados"
@@ -146,30 +149,74 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle>Próximos eventos</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {upcoming.map((event) => (
-              <div
-                key={event.id}
-                className="relative overflow-hidden rounded-xl border border-[var(--anasac-border)] bg-white/70 px-3 py-3"
-              >
-                <Bubbles preset="card" className="opacity-50" />
-                <div className="relative z-[1] flex items-start justify-between gap-2">
-                  <p className="text-sm font-semibold text-[var(--anasac-navy)]">
-                    {event.title}
-                  </p>
-                  <Badge variant="muted">{event.type}</Badge>
-                </div>
-                <p className="relative z-[1] mt-1 text-xs text-slate-500">
-                  {formatDate(event.startAt)} · {event.location}
-                </p>
+          <CardContent>
+            {upcoming.length === 0 ? (
+              <p className="text-sm text-slate-500">
+                No hay competencias, reuniones u otros eventos próximos.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {upcoming.map((event, index) => {
+                  const dia = new Intl.DateTimeFormat("en-CA", {
+                    timeZone: "America/Costa_Rica",
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                  }).format(new Date(event.startAt));
+                  const href = appHref(basePath, `/calendar?dia=${dia}`);
+                  if (index === 0) {
+                    return (
+                      <Link
+                        key={event.id}
+                        href={href}
+                        className="relative block overflow-hidden rounded-xl bg-[linear-gradient(135deg,#1a7a72_0%,#2e768d_45%,#3ecfc0_120%)] p-4 text-white transition hover:brightness-105"
+                      >
+                        <Bubbles preset="hero" />
+                        <div className="relative z-[1]">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--anasac-aqua)]">
+                            Próximo · {event.type}
+                          </p>
+                          <h3 className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold">
+                            {event.title}
+                          </h3>
+                          {event.location ? (
+                            <p className="mt-2 text-sm text-white/80">
+                              {event.location}
+                            </p>
+                          ) : null}
+                          <p className="mt-1 text-sm text-white/70">
+                            {formatDate(event.startAt)}
+                          </p>
+                        </div>
+                      </Link>
+                    );
+                  }
+                  return (
+                    <Link
+                      key={event.id}
+                      href={href}
+                      className="relative block overflow-hidden rounded-xl border border-[var(--anasac-border)] bg-white px-3 py-3 transition hover:border-[var(--anasac-teal)]"
+                    >
+                      <div className="relative z-[1] flex items-start justify-between gap-2">
+                        <p className="text-sm font-semibold text-[var(--anasac-navy)]">
+                          {event.title}
+                        </p>
+                        <Badge variant="muted">{event.type}</Badge>
+                      </div>
+                      <p className="relative z-[1] mt-1 text-xs text-slate-500">
+                        {formatDate(event.startAt)} · {event.location}
+                      </p>
+                    </Link>
+                  );
+                })}
+                <Link
+                  href={appHref(basePath, "/calendar")}
+                  className="inline-block text-sm font-semibold text-[var(--anasac-teal)] hover:underline"
+                >
+                  Ver calendario →
+                </Link>
               </div>
-            ))}
-            <Link
-              href={appHref(basePath, "/calendar")}
-              className="inline-block text-sm font-semibold text-[var(--anasac-teal)] hover:underline"
-            >
-              Ir al calendario →
-            </Link>
+            )}
           </CardContent>
         </Card>
       </div>
