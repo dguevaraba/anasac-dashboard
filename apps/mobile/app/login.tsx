@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   View,
   Text,
@@ -7,25 +7,117 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Pressable,
 } from "react-native";
 import { Redirect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { DEMO_PASSWORD } from "@anasac/shared";
+import Svg, { Path } from "react-native-svg";
 import { useAuth } from "@/auth";
 import { Bubbles } from "@/components/Bubbles";
 import { Button, Input } from "@/components/ui";
+import { isSupabaseConfigured } from "@/supabase/config";
 import { colors } from "@/theme";
 
+function GoogleIcon() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24">
+      <Path
+        fill="#EA4335"
+        d="M12 5.4c1.5 0 2.9.5 3.9 1.6l2.9-2.9C17.2 2.4 14.8 1.4 12 1.4 7.3 1.4 3.3 4.2 1.7 8.4l3.4 2.6C6 7.7 8.7 5.4 12 5.4z"
+      />
+      <Path
+        fill="#4285F4"
+        d="M22.6 12.2c0-.8-.1-1.6-.2-2.3H12v4.4h5.9c-.3 1.4-1.1 2.6-2.3 3.4l3.5 2.7c2.1-1.9 3.5-4.8 3.5-8.2z"
+      />
+      <Path
+        fill="#FBBC05"
+        d="M5.1 14.3c-.3-.9-.5-1.8-.5-2.8s.2-1.9.5-2.8L1.7 6.1C.9 7.8.4 9.8.4 11.5s.5 3.7 1.3 5.4l3.4-2.6z"
+      />
+      <Path
+        fill="#34A853"
+        d="M12 22.6c2.8 0 5.1-.9 6.8-2.5l-3.5-2.7c-.9.6-2.1 1-3.3 1-3.3 0-6-2.2-7-5.3L1.7 16.9C3.3 21.1 7.3 22.6 12 22.6z"
+      />
+    </Svg>
+  );
+}
+
+function MicrosoftIcon() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 23 23">
+      <Path fill="#f25022" d="M1 1h10v10H1z" />
+      <Path fill="#00a4ef" d="M12 1h10v10H12z" />
+      <Path fill="#7fba00" d="M1 12h10v10H1z" />
+      <Path fill="#ffb900" d="M12 12h10v10H12z" />
+    </Svg>
+  );
+}
+
+function OAuthButton({
+  label,
+  loadingLabel,
+  loading,
+  disabled,
+  onPress,
+  icon,
+}: {
+  label: string;
+  loadingLabel: string;
+  loading: boolean;
+  disabled: boolean;
+  onPress: () => void;
+  icon: ReactNode;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.oauthButton,
+        pressed && { opacity: 0.85 },
+        disabled && { opacity: 0.55 },
+      ]}
+    >
+      {icon}
+      <Text style={styles.oauthText}>{loading ? loadingLabel : label}</Text>
+    </Pressable>
+  );
+}
+
 export default function LoginScreen() {
-  const { login, user, isLoading } = useAuth();
+  const { login, loginWithGoogle, loginWithMicrosoft, user, isLoading } =
+    useAuth();
   const router = useRouter();
-  const [email, setEmail] = useState("admin@anasaccr.com");
-  const [password, setPassword] = useState(DEMO_PASSWORD);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<"google" | "azure" | null>(
+    null,
+  );
+  const configured = isSupabaseConfigured();
 
   if (!isLoading && user) {
     return <Redirect href="/(app)" />;
+  }
+
+  async function onOAuth(provider: "google" | "azure") {
+    setError(null);
+    setOauthLoading(provider);
+    const result =
+      provider === "google"
+        ? await loginWithGoogle()
+        : await loginWithMicrosoft();
+    setOauthLoading(null);
+    if (!result.ok) {
+      setError(
+        result.error ??
+          (provider === "google"
+            ? "No se pudo conectar con Google."
+            : "No se pudo conectar con Microsoft."),
+      );
+      return;
+    }
+    router.replace("/(app)");
   }
 
   async function onSubmit() {
@@ -40,6 +132,8 @@ export default function LoginScreen() {
     router.replace("/(app)");
   }
 
+  const busy = submitting || oauthLoading !== null;
+
   return (
     <LinearGradient colors={[colors.navy, colors.teal, "#1a7a72"]} style={{ flex: 1 }}>
       <Bubbles preset="hero" />
@@ -48,30 +142,57 @@ export default function LoginScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <View style={styles.hero}>
-            <View style={styles.logoBox}>
-              <Image
-                source={require("../assets/anasac-logo.png")}
-                style={styles.logo}
-                resizeMode="contain"
-              />
-            </View>
-            <Text style={styles.eyebrow}>Asociación de Natación</Text>
-            <Text style={styles.heroTitle}>ANASAC Dashboard</Text>
-            <Text style={styles.heroText}>
-              Panel móvil para nadadores, competencias, calendario y pagos.
-            </Text>
-          </View>
-
           <View style={styles.card}>
             <Bubbles preset="panel" />
+            <View style={styles.logoWrap}>
+              <View style={styles.logoBox}>
+                <Image
+                  source={require("../assets/anasac-logo.png")}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+              </View>
+            </View>
             <Text style={styles.cardTitle}>Iniciar sesión</Text>
-            <Text style={styles.cardHint}>Accede con una cuenta de demostración.</Text>
+
+            {!configured ? (
+              <Text style={styles.warn}>
+                Falta configurar la conexión con el servidor.
+              </Text>
+            ) : null}
+
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+
+            <View style={styles.oauthStack}>
+              <OAuthButton
+                icon={<GoogleIcon />}
+                label="Continuar con Google"
+                loadingLabel="Conectando..."
+                loading={oauthLoading === "google"}
+                disabled={!configured || busy}
+                onPress={() => void onOAuth("google")}
+              />
+              <OAuthButton
+                icon={<MicrosoftIcon />}
+                label="Continuar con Microsoft"
+                loadingLabel="Conectando..."
+                loading={oauthLoading === "azure"}
+                disabled={!configured || busy}
+                onPress={() => void onOAuth("azure")}
+              />
+            </View>
+
+            <View style={styles.dividerWrap}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>o con correo</Text>
+              <View style={styles.dividerLine} />
+            </View>
 
             <Text style={styles.label}>Correo electrónico</Text>
             <Input
               autoCapitalize="none"
               keyboardType="email-address"
+              autoComplete="email"
               value={email}
               onChangeText={setEmail}
             />
@@ -79,29 +200,17 @@ export default function LoginScreen() {
             <Text style={styles.label}>Contraseña</Text>
             <Input
               secureTextEntry
+              autoComplete="password"
               value={password}
               onChangeText={setPassword}
             />
 
-            {error ? <Text style={styles.error}>{error}</Text> : null}
-
             <Button
               title={submitting ? "Ingresando..." : "Entrar"}
               onPress={onSubmit}
-              disabled={submitting}
+              disabled={!configured || busy}
               style={{ marginTop: 16 }}
             />
-
-            <View style={styles.demoBox}>
-              <Bubbles preset="card" />
-              <Text style={styles.demoTitle}>Cuentas demo</Text>
-              <Text style={styles.demoLine}>admin@anasaccr.com — Administrador</Text>
-              <Text style={styles.demoLine}>entrenador@anasaccr.com — Entrenador</Text>
-              <Text style={styles.demoLine}>nadador@anasaccr.com — Nadador</Text>
-              <Text style={[styles.demoLine, { marginTop: 6 }]}>
-                Contraseña: {DEMO_PASSWORD}
-              </Text>
-            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -111,46 +220,29 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   scroll: {
+    flexGrow: 1,
+    justifyContent: "center",
     padding: 20,
-    paddingTop: 64,
+    paddingTop: 48,
     paddingBottom: 40,
   },
-  hero: {
-    marginBottom: 20,
+  logoWrap: {
+    alignItems: "center",
+    marginBottom: 16,
+    zIndex: 1,
   },
   logoBox: {
-    width: 112,
-    height: 64,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.95)",
+    width: 168,
+    height: 96,
+    borderRadius: 18,
+    backgroundColor: colors.mist,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 18,
     overflow: "hidden",
   },
   logo: {
-    width: 100,
-    height: 56,
-  },
-  eyebrow: {
-    color: colors.aqua,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 2,
-    textTransform: "uppercase",
-  },
-  heroTitle: {
-    marginTop: 8,
-    color: colors.white,
-    fontSize: 32,
-    fontWeight: "800",
-  },
-  heroText: {
-    marginTop: 8,
-    color: "rgba(255,255,255,0.8)",
-    fontSize: 14,
-    lineHeight: 20,
-    maxWidth: 320,
+    width: 148,
+    height: 84,
   },
   card: {
     backgroundColor: colors.white,
@@ -162,13 +254,49 @@ const styles = StyleSheet.create({
     color: colors.navy,
     fontSize: 24,
     fontWeight: "800",
+    textAlign: "center",
     zIndex: 1,
   },
-  cardHint: {
-    marginTop: 4,
-    marginBottom: 12,
-    color: "#64748b",
+  oauthStack: {
+    gap: 10,
+    marginTop: 8,
     zIndex: 1,
+  },
+  oauthButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  oauthText: {
+    color: colors.navy,
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  dividerWrap: {
+    marginVertical: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    zIndex: 1,
+  },
+  dividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+  },
+  dividerText: {
+    color: "#94a3b8",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
   },
   label: {
     marginTop: 12,
@@ -187,24 +315,13 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     zIndex: 1,
   },
-  demoBox: {
-    marginTop: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.mist,
-    padding: 12,
+  warn: {
+    marginTop: 10,
+    color: "#92400e",
+    backgroundColor: "#fffbeb",
+    padding: 10,
+    borderRadius: 10,
     overflow: "hidden",
-  },
-  demoTitle: {
-    color: colors.navy,
-    fontWeight: "700",
-    marginBottom: 6,
-    zIndex: 1,
-  },
-  demoLine: {
-    color: "#475569",
-    fontSize: 12,
     zIndex: 1,
   },
 });

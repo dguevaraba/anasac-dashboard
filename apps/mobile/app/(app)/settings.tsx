@@ -28,7 +28,7 @@ export default function SettingsScreen() {
 
         <Card bubbles bubblePreset="panel">
           <CardTitle>Entorno</CardTitle>
-          <Badge label="Mock / demo" tone="warning" />
+          <Badge label="Supabase / live" tone="success" />
           <Text style={styles.meta}>
             Usuario: {user?.fullName} · {user ? ROLE_LABELS[user.role] : ""}
           </Text>

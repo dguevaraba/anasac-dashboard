@@ -15,7 +15,7 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.mist }} contentContainerStyle={{ paddingBottom: 32 }}>
-      <Screen title="Mi perfil" description="Cuenta activa en modo demostración.">
+      <Screen title="Mi perfil" description="Cuenta conectada a Supabase.">
         <Card bubbles bubblePreset="hero" style={{ alignItems: "center" }}>
           <View style={styles.avatarWrap}>
             <Bubbles preset="card" />

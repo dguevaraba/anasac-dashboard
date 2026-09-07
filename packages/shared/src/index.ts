@@ -1,5 +1,6 @@
 export * from "./types";
 export * from "./permissions";
+export * from "./calendario";
 export * from "./format";
 export * from "./brand";
 export * from "./mock-data";

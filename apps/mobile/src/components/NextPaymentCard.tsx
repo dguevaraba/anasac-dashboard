@@ -1,12 +1,34 @@
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet, ActivityIndicator } from "react-native";
 import { Link } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { formatCrc, formatDate, getNextInstitutionalPayment } from "@anasac/shared";
+import { formatCrc, formatDate } from "@anasac/shared";
 import { Bubbles } from "@/components/Bubbles";
 import { colors } from "@/theme";
 
-export function NextPaymentCard() {
-  const next = getNextInstitutionalPayment();
+export type NextPaymentData = {
+  dueDate: string;
+  daysRemaining: number;
+  pendingAmount: number;
+  pendingCount: number;
+};
+
+export function NextPaymentCard({
+  next,
+  loading = false,
+}: {
+  next: NextPaymentData | null;
+  loading?: boolean;
+}) {
+  if (loading) {
+    return (
+      <View style={[styles.card, styles.loadingCard]}>
+        <ActivityIndicator color={colors.aqua} />
+      </View>
+    );
+  }
+
+  if (!next) return null;
+
   const isOverdue = next.daysRemaining < 0;
   const isToday = next.daysRemaining === 0;
 
@@ -27,12 +49,20 @@ export function NextPaymentCard() {
 
         <View style={styles.metrics}>
           <View style={styles.metric}>
-            <Text style={styles.metricLabel}>Días restantes</Text>
+            <Text style={styles.metricLabel}>
+              {isOverdue ? "Días de atraso" : "Días restantes"}
+            </Text>
             <Text style={styles.metricValue}>
               {isOverdue ? Math.abs(next.daysRemaining) : next.daysRemaining}
             </Text>
             <Text style={styles.metricHint}>
-              {isOverdue ? "días de atraso" : isToday ? "vence hoy" : "días"}
+              {isOverdue
+                ? "después del límite"
+                : isToday
+                  ? "vence hoy"
+                  : next.daysRemaining === 1
+                    ? "día"
+                    : "días"}
             </Text>
           </View>
           <View style={styles.metric}>
@@ -61,6 +91,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: "hidden",
     backgroundColor: colors.navy,
+  },
+  loadingCard: {
+    minHeight: 160,
+    alignItems: "center",
+    justifyContent: "center",
   },
   inner: {
     padding: 18,

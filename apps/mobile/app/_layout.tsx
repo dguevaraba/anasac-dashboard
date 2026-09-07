@@ -11,6 +11,7 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.mist } }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="login" />
+        <Stack.Screen name="auth/callback" />
         <Stack.Screen name="(app)" />
       </Stack>
     </AuthProvider>

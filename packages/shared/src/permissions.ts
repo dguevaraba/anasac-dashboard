@@ -60,11 +60,11 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 };
 
 export function getPermissionsForRole(role: Role): Permission[] {
-  return ROLE_PERMISSIONS[role];
+  return ROLE_PERMISSIONS[role] ?? [];
 }
 
 export function hasPermission(role: Role, permission: Permission): boolean {
-  return ROLE_PERMISSIONS[role].includes(permission);
+  return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
 }
 
 export function canManage(

@@ -1,12 +1,15 @@
-import { ScrollView, Text, StyleSheet, View, Pressable } from "react-native";
-import { demoUsers, ROLE_LABELS, type Role } from "@anasac/shared";
+import { ScrollView, Text, StyleSheet, View, ActivityIndicator } from "react-native";
+import { ROLE_LABELS } from "@anasac/shared";
 import { useAuth } from "@/auth";
+import { fetchUsers } from "@/data/users";
+import { useLiveQuery } from "@/hooks/useLiveQuery";
 import { Card } from "@/components/Card";
 import { Badge, Screen } from "@/components/ui";
 import { colors } from "@/theme";
 
 export default function UsersScreen() {
-  const { can, switchRoleDemo, user } = useAuth();
+  const { can, user } = useAuth();
+  const { data: users, loading, error } = useLiveQuery(fetchUsers, []);
 
   if (!can("users:view")) {
     return (
@@ -18,23 +21,11 @@ export default function UsersScreen() {
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.mist }} contentContainerStyle={{ paddingBottom: 32 }}>
-      <Screen
-        title="Usuarios y roles"
-        description="Cambia de rol demo para probar permisos."
-      >
-        <View style={styles.roleRow}>
-          {(Object.keys(ROLE_LABELS) as Role[]).map((role) => (
-            <Pressable
-              key={role}
-              style={styles.roleChip}
-              onPress={() => switchRoleDemo(role)}
-            >
-              <Text style={styles.roleChipText}>Probar {ROLE_LABELS[role]}</Text>
-            </Pressable>
-          ))}
-        </View>
+      <Screen title="Usuarios y roles" description="Cuentas con acceso a ANASAC.">
+        {loading ? <ActivityIndicator color={colors.teal} style={{ marginBottom: 12 }} /> : null}
+        {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        {demoUsers.map((u) => (
+        {(users ?? []).map((u) => (
           <Card key={u.id} bubbles bubblePreset="card" style={{ marginBottom: 10 }}>
             <Text style={styles.name}>
               {u.fullName}
@@ -56,14 +47,14 @@ export default function UsersScreen() {
 }
 
 const styles = StyleSheet.create({
-  roleRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  roleChip: {
-    backgroundColor: colors.navy,
+  error: {
+    marginBottom: 10,
+    color: "#b91c1c",
+    backgroundColor: "#fef2f2",
+    padding: 10,
     borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    overflow: "hidden",
   },
-  roleChipText: { color: colors.white, fontSize: 12, fontWeight: "700" },
   name: { color: colors.navy, fontWeight: "800", fontSize: 16 },
   meta: { marginTop: 4, color: "#64748b", fontSize: 13 },
 });

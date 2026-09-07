@@ -1,223 +1,280 @@
-import { ScrollView, View, Text, StyleSheet, Dimensions } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { BarChart, LineChart, PieChart } from "react-native-gifted-charts";
 import {
-  attendanceByWeek,
-  calendarEvents,
-  competitions,
+  ScrollView,
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  Pressable,
+  ActivityIndicator,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { Link } from "expo-router";
+import {
+  daysUntil,
+  etiquetaTipoEvento,
   formatCrc,
   formatDate,
-  formatTimeMs,
-  getNextInstitutionalPayment,
-  payments,
-  results,
-  resultsByStroke,
-  resultsTrend,
-  swimmers,
-  findSwimmer,
-  findEvent,
-  findCompetition,
+  formatDateTime,
+  puedeVerTipoEvento,
 } from "@anasac/shared";
 import { useAuth } from "@/auth";
+import { fetchDashboardData } from "@/data/dashboard";
+import { useLiveQuery } from "@/hooks/useLiveQuery";
 import { StatCard } from "@/components/StatCard";
 import { NextPaymentCard } from "@/components/NextPaymentCard";
-import { Card, CardTitle, CardHint } from "@/components/Card";
+import { Card, CardTitle } from "@/components/Card";
 import { Badge, Screen } from "@/components/ui";
 import { colors } from "@/theme";
 
-const chartWidth = Dimensions.get("window").width - 72;
+function claveDiaCostaRica(iso: string) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Costa_Rica",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
+}
+
+const TYPE_TONE = {
+  competencia: "navy",
+  reunion: "warning",
+  otro: "muted",
+  entrenamiento: "success",
+} as const;
 
 export default function DashboardScreen() {
-  const { user } = useAuth();
-  const active = swimmers.filter((s) => s.status === "activo").length;
-  const next = getNextInstitutionalPayment();
-  const pending = payments.filter((p) => p.status === "pendiente").length;
-  const upcoming = [...calendarEvents]
-    .sort((a, b) => a.startAt.localeCompare(b.startAt))
-    .slice(0, 3);
-  const recent = [...results]
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 4);
-  const nextComp = [...competitions]
-    .filter((c) => c.status === "programada" || c.status === "en_curso")
-    .sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
+  const { user, can } = useAuth();
+  const role = user?.role ?? null;
+  const puedeVerNadadores = can("swimmers:view");
+  const puedeVerPagos = can("payments:view");
+  const puedeVerCalendario = can("calendar:view");
+
+  const { data, loading, error } = useLiveQuery(
+    () =>
+      fetchDashboardData({
+        canPayments: puedeVerPagos,
+        canSwimmers: puedeVerNadadores,
+      }),
+    [puedeVerPagos, puedeVerNadadores],
+  );
+
+  const eventosVisibles = (data?.proximosEventos ?? []).filter((e) =>
+    puedeVerTipoEvento(role, e.type),
+  );
+  const eventosLista = eventosVisibles.slice(0, 6);
+  const proximoEvento = eventosVisibles[0] ?? null;
+  const diasProximo = proximoEvento
+    ? daysUntil(claveDiaCostaRica(proximoEvento.startAt))
+    : null;
+
+  let hintDias = "Sin eventos próximos";
+  if (diasProximo != null && proximoEvento) {
+    if (diasProximo === 0) hintDias = proximoEvento.title;
+    else if (diasProximo === 1) hintDias = `Mañana · ${proximoEvento.title}`;
+    else hintDias = proximoEvento.title;
+  }
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.mist }} contentContainerStyle={{ paddingBottom: 32 }}>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: colors.mist }}
+      contentContainerStyle={{ paddingBottom: 32 }}
+    >
       <Screen
         title={`Hola, ${user?.fullName.split(" ")[0]}`}
-        description="Resumen operativo ANASAC — datos demo."
+        description="Resumen operativo ANASAC."
       >
+        {loading ? (
+          <View style={styles.center}>
+            <ActivityIndicator color={colors.teal} />
+          </View>
+        ) : null}
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
         <View style={styles.stats}>
-          <StatCard
-            title="Nadadores"
-            value={swimmers.length}
-            hint={`${active} activos`}
-            icon={<Ionicons name="water" size={20} color={colors.aqua} />}
-          />
-          <StatCard
-            title="Competencias"
-            value={competitions.length}
-            hint="Temporada 2026"
-            icon={<Ionicons name="trophy" size={20} color={colors.aqua} />}
-          />
-          <StatCard
-            title="Pagos pend."
-            value={pending}
-            hint={`${next.daysRemaining} días al cobro`}
-            icon={<Ionicons name="card" size={20} color={colors.aqua} />}
-          />
-          <StatCard
-            title="Resultados"
-            value={results.length}
-            hint="Marcas registradas"
-            icon={<Ionicons name="list" size={20} color={colors.aqua} />}
-          />
+          {puedeVerNadadores ? (
+            <StatCard
+              title="Nadadores"
+              value={data?.swimmers.total ?? "—"}
+              hint={`${data?.swimmers.active ?? 0} activos`}
+              icon={<Ionicons name="water" size={20} color={colors.aqua} />}
+            />
+          ) : null}
+          {puedeVerPagos ? (
+            <StatCard
+              title="Pagos"
+              value={data?.pagosCount ?? "—"}
+              hint={
+                (data?.pendingCount ?? 0) === 0
+                  ? "Sin cobros pendientes"
+                  : `${data?.pendingCount} pendiente${(data?.pendingCount ?? 0) === 1 ? "" : "s"}`
+              }
+              icon={<Ionicons name="card" size={20} color={colors.aqua} />}
+            />
+          ) : null}
+          {puedeVerCalendario ? (
+            <StatCard
+              title="Días al próximo evento"
+              value={
+                diasProximo == null
+                  ? "—"
+                  : diasProximo === 0
+                    ? "Hoy"
+                    : Math.max(0, diasProximo)
+              }
+              hint={hintDias}
+              icon={
+                <Ionicons name="calendar" size={20} color={colors.aqua} />
+              }
+            />
+          ) : null}
         </View>
 
-        <NextPaymentCard />
+        {puedeVerPagos ? (
+          <NextPaymentCard next={data?.mensualidad ?? null} loading={loading} />
+        ) : null}
 
-        {nextComp ? (
-          <Card bubbles bubblePreset="panel">
-            <CardTitle>Próxima competencia</CardTitle>
-            <CardHint>{nextComp.location}</CardHint>
-            <Text style={styles.compName}>{nextComp.name}</Text>
-            <Text style={styles.muted}>
-              {formatDate(nextComp.startDate)} — {formatDate(nextComp.endDate)}
-            </Text>
-            <View style={{ marginTop: 8 }}>
-              <Badge label={nextComp.status.replace("_", " ")} />
-            </View>
+        {puedeVerCalendario ? (
+          <Card bubbles bubblePreset="card">
+            <CardTitle>Próximos eventos</CardTitle>
+            {eventosLista.length === 0 && !loading ? (
+              <Text style={styles.muted}>
+                No hay eventos próximos para tu rol.
+              </Text>
+            ) : (
+              eventosLista.map((event, index) => {
+                const tipo = etiquetaTipoEvento(event.type);
+                if (index === 0) {
+                  return (
+                    <View key={event.id} style={styles.featuredWrap}>
+                      {event.imageUrl ? (
+                        <Image
+                          source={{ uri: event.imageUrl }}
+                          style={styles.featuredImage}
+                        />
+                      ) : null}
+                      <LinearGradient
+                        colors={
+                          event.imageUrl
+                            ? ["rgba(15,44,61,0.55)", "rgba(26,122,114,0.85)"]
+                            : ["#1a7a72", "#2e768d", "#3ecfc0"]
+                        }
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.featured}
+                      >
+                        <Text style={styles.featuredEyebrow}>
+                          Próximo · {tipo}
+                        </Text>
+                        <Text style={styles.featuredTitle}>{event.title}</Text>
+                        {event.location ? (
+                          <Text style={styles.featuredMeta}>
+                            {event.location}
+                          </Text>
+                        ) : null}
+                        <Text style={styles.featuredMeta}>
+                          {formatDateTime(event.startAt)}
+                        </Text>
+                      </LinearGradient>
+                    </View>
+                  );
+                }
+
+                return (
+                  <View key={event.id} style={styles.rowItem}>
+                    {event.imageUrl ? (
+                      <Image
+                        source={{ uri: event.imageUrl }}
+                        style={styles.thumb}
+                      />
+                    ) : null}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.rowTitle}>{event.title}</Text>
+                      <Text style={styles.muted}>
+                        {formatDate(event.startAt)}
+                        {event.location ? ` · ${event.location}` : ""}
+                      </Text>
+                    </View>
+                    <Badge
+                      label={tipo}
+                      tone={
+                        TYPE_TONE[event.type as keyof typeof TYPE_TONE] ??
+                        "muted"
+                      }
+                    />
+                  </View>
+                );
+              })
+            )}
+            <Link href="/calendar" asChild>
+              <Pressable style={{ marginTop: 12 }}>
+                <Text style={styles.link}>Ver calendario →</Text>
+              </Pressable>
+            </Link>
           </Card>
         ) : null}
 
-        <Card bubbles bubblePreset="card">
-          <CardTitle>Asistencia semanal</CardTitle>
-          <CardHint>Presentes (mock)</CardHint>
-          <View style={{ marginTop: 12 }}>
-            <BarChart
-              data={attendanceByWeek.map((w) => ({
-                value: w.presentes,
-                label: w.semana.replace("Sem ", "S"),
-                frontColor: colors.teal,
-              }))}
-              barWidth={22}
-              spacing={18}
-              roundedTop
-              hideRules
-              yAxisThickness={0}
-              xAxisThickness={0}
-              noOfSections={4}
-              width={chartWidth}
-              height={160}
-              frontColor={colors.teal}
-            />
-          </View>
-        </Card>
-
-        <Card bubbles bubblePreset="panel">
-          <CardTitle>Tendencia de resultados</CardTitle>
-          <CardHint>Marcas por mes</CardHint>
-          <View style={{ marginTop: 12 }}>
-            <LineChart
-              data={resultsTrend.map((r) => ({ value: r.marcas, label: r.mes }))}
-              color={colors.teal}
-              dataPointsColor={colors.aqua}
-              thickness={3}
-              curved
-              hideRules
-              yAxisThickness={0}
-              xAxisThickness={0}
-              width={chartWidth}
-              height={160}
-              noOfSections={4}
-            />
-          </View>
-        </Card>
-
-        <Card bubbles bubblePreset="card">
-          <CardTitle>Resultados por estilo</CardTitle>
-          <View style={styles.pieWrap}>
-            <PieChart
-              data={resultsByStroke.map((item, index) => ({
-                value: item.marcas,
-                color: [colors.teal, colors.navy, colors.aqua, "#8ebecb", "#94a3b8"][index],
-                text: `${item.marcas}`,
-              }))}
-              donut
-              radius={70}
-              innerRadius={42}
-              centerLabelComponent={() => (
-                <Text style={{ color: colors.navy, fontWeight: "800" }}>Estilos</Text>
-              )}
-            />
-          </View>
-        </Card>
-
-        <Card bubbles>
-          <CardTitle>Próximos eventos</CardTitle>
-          {upcoming.map((event) => (
-            <View key={event.id} style={styles.rowItem}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rowTitle}>{event.title}</Text>
-                <Text style={styles.muted}>
-                  {formatDate(event.startAt)} · {event.location}
-                </Text>
-              </View>
-              <Badge label={event.type} tone="muted" />
-            </View>
-          ))}
-        </Card>
-
-        <Card bubbles bubblePreset="panel">
-          <CardTitle>Resultados recientes</CardTitle>
-          {recent.map((result) => {
-            const swimmer = findSwimmer(result.swimmerId);
-            const event = findEvent(result.eventId);
-            const competition = findCompetition(result.competitionId);
-            return (
-              <View key={result.id} style={styles.rowItem}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.rowTitle}>
-                    {swimmer ? `${swimmer.firstName} ${swimmer.lastName}` : "Nadador"}
-                  </Text>
-                  <Text style={styles.muted}>
-                    {event?.name} · {competition?.name}
-                  </Text>
-                </View>
-                <Text style={styles.time}>{formatTimeMs(result.timeMs)}</Text>
-              </View>
-            );
-          })}
+        {puedeVerPagos && data?.mensualidad ? (
           <Text style={[styles.muted, { marginTop: 8 }]}>
-            Pendiente de cobro: {formatCrc(next.pendingAmount)}
+            Pendiente de cobro: {formatCrc(data.mensualidad.pendingAmount)}
           </Text>
-        </Card>
+        ) : null}
       </Screen>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  center: { paddingVertical: 12, alignItems: "center" },
+  error: {
+    marginBottom: 10,
+    color: "#b91c1c",
+    backgroundColor: "#fef2f2",
+    padding: 10,
+    borderRadius: 10,
+    overflow: "hidden",
+  },
   stats: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
   },
-  compName: {
-    marginTop: 10,
-    color: colors.navy,
-    fontSize: 18,
-    fontWeight: "800",
-  },
   muted: {
     color: "#64748b",
     fontSize: 12,
-    marginTop: 2,
+    marginTop: 8,
   },
-  pieWrap: {
+  featuredWrap: {
     marginTop: 12,
-    alignItems: "center",
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  featuredImage: {
+    ...StyleSheet.absoluteFill,
+    opacity: 0.35,
+  },
+  featured: {
+    padding: 16,
+    minHeight: 120,
+    justifyContent: "flex-end",
+  },
+  featuredEyebrow: {
+    color: colors.aqua,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  featuredTitle: {
+    marginTop: 6,
+    color: colors.white,
+    fontSize: 20,
+    fontWeight: "800",
+  },
+  featuredMeta: {
+    marginTop: 4,
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 13,
   },
   rowItem: {
     marginTop: 10,
@@ -226,16 +283,21 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
+  },
+  thumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
   },
   rowTitle: {
     color: colors.navy,
     fontWeight: "700",
     fontSize: 14,
   },
-  time: {
+  link: {
     color: colors.teal,
-    fontWeight: "800",
-    fontVariant: ["tabular-nums"],
+    fontWeight: "700",
+    fontSize: 13,
   },
 });

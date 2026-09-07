@@ -115,13 +115,13 @@ function LoginForm() {
         <div className="relative hidden overflow-hidden bg-[linear-gradient(160deg,#0f2c3d_0%,#2e768d_55%,#3ecfc0_140%)] p-10 text-white lg:flex lg:flex-col lg:justify-between">
           <Bubbles preset="hero" />
           <div className="relative z-[1]">
-            <div className="relative mb-8 h-16 w-28 rounded-xl bg-white/95 p-2">
+            <div className="relative mb-8 h-24 w-44 rounded-2xl bg-white/95 p-3">
               <Image
                 src="/anasac-logo.png"
                 alt="Logo ANASAC"
                 fill
                 className="object-contain p-1"
-                sizes="112px"
+                sizes="176px"
                 priority
               />
             </div>
@@ -144,31 +144,22 @@ function LoginForm() {
         <div className="relative overflow-hidden p-8 md:p-10">
           <Bubbles preset="panel" className="opacity-80" />
           <div className="relative z-[1]">
-            <div className="mb-8 flex items-center gap-3 lg:hidden">
-              <div className="relative h-12 w-20 rounded-lg bg-[var(--anasac-mist)] p-1">
+            <div className="mb-8 flex justify-center lg:hidden">
+              <div className="relative h-24 w-44 rounded-2xl bg-[var(--anasac-mist)] p-3">
                 <Image
                   src="/anasac-logo.png"
                   alt="Logo ANASAC"
                   fill
-                  className="object-contain"
-                  sizes="80px"
+                  className="object-contain p-1"
+                  sizes="176px"
                   priority
                 />
-              </div>
-              <div>
-                <p className="font-[family-name:var(--font-display)] text-lg font-bold text-[var(--anasac-navy)]">
-                  ANASAC
-                </p>
-                <p className="text-xs text-slate-500">Panel administrativo</p>
               </div>
             </div>
 
             <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-[var(--anasac-navy)]">
               Iniciar sesión
             </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Entrá con Google o Microsoft (Outlook / Hotmail).
-            </p>
 
             {!configured ? (
               <p className="mt-6 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">

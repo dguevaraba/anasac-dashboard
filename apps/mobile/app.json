@@ -7,12 +7,6 @@
     "icon": "./assets/icon.png",
     "scheme": "anasac",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0f2c3d"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anasaccr.dashboard"
@@ -29,7 +23,19 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0f2c3d"
+        }
+      ],
+      "expo-web-browser"
+    ],
     "experiments": {
       "typedRoutes": true
     }
