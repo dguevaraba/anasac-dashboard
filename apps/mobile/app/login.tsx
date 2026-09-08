@@ -9,8 +9,9 @@ import {
   ScrollView,
   Pressable,
 } from "react-native";
-import { Redirect, useRouter } from "expo-router";
+import { Redirect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import Svg, { Path } from "react-native-svg";
 import { useAuth } from "@/auth";
 import { Bubbles } from "@/components/Bubbles";
@@ -86,9 +87,9 @@ function OAuthButton({
 export default function LoginScreen() {
   const { login, loginWithGoogle, loginWithMicrosoft, user, isLoading } =
     useAuth();
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<"google" | "azure" | null>(
@@ -115,9 +116,8 @@ export default function LoginScreen() {
             ? "No se pudo conectar con Google."
             : "No se pudo conectar con Microsoft."),
       );
-      return;
     }
-    router.replace("/(app)");
+    // La navegación la hace <Redirect> al setear user.
   }
 
   async function onSubmit() {
@@ -127,9 +127,8 @@ export default function LoginScreen() {
     setSubmitting(false);
     if (!result.ok) {
       setError(result.error ?? "No se pudo iniciar sesión.");
-      return;
     }
-    router.replace("/(app)");
+    // La navegación la hace <Redirect> al setear user.
   }
 
   const busy = submitting || oauthLoading !== null;
@@ -191,19 +190,44 @@ export default function LoginScreen() {
             <Text style={styles.label}>Correo electrónico</Text>
             <Input
               autoCapitalize="none"
+              autoCorrect={false}
+              spellCheck={false}
               keyboardType="email-address"
+              textContentType="username"
               autoComplete="email"
               value={email}
               onChangeText={setEmail}
             />
 
             <Text style={styles.label}>Contraseña</Text>
-            <Input
-              secureTextEntry
-              autoComplete="password"
-              value={password}
-              onChangeText={setPassword}
-            />
+            <View style={styles.passwordWrap}>
+              <Input
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                spellCheck={false}
+                textContentType="password"
+                autoComplete="password"
+                value={password}
+                onChangeText={setPassword}
+                style={styles.passwordInput}
+              />
+              <Pressable
+                onPress={() => setShowPassword((v) => !v)}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+                }
+                style={styles.eyeButton}
+              >
+                <Ionicons
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={22}
+                  color={colors.teal}
+                />
+              </Pressable>
+            </View>
 
             <Button
               title={submitting ? "Ingresando..." : "Entrar"}
@@ -305,6 +329,21 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 13,
     zIndex: 1,
+  },
+  passwordWrap: {
+    position: "relative",
+    zIndex: 1,
+    justifyContent: "center",
+  },
+  passwordInput: {
+    paddingRight: 48,
+  },
+  eyeButton: {
+    position: "absolute",
+    right: 12,
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
   },
   error: {
     marginTop: 10,

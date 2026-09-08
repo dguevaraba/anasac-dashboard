@@ -4,9 +4,11 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { AppState, type AppStateStatus } from "react-native";
 import {
   getPermissionsForRole,
   hasPermission,
@@ -14,6 +16,7 @@ import {
   type Role,
   type UserProfile,
 } from "@anasac/shared";
+import type { Session } from "@supabase/supabase-js";
 import { isSupabaseConfigured } from "@/supabase/config";
 import { getSupabase } from "@/supabase/client";
 import { fetchProfileById } from "@/supabase/profile";
@@ -28,7 +31,10 @@ import {
 interface AuthContextValue {
   user: UserProfile | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  login: (
+    email: string,
+    password: string,
+  ) => Promise<{ ok: boolean; error?: string }>;
   loginWithGoogle: () => Promise<{ ok: boolean; error?: string }>;
   loginWithMicrosoft: () => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
@@ -41,29 +47,26 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const oauthInFlight = useRef(false);
+  const profileRequest = useRef(0);
 
-  const loadProfile = useCallback(async () => {
-    if (!isSupabaseConfigured()) {
-      setUser(null);
-      setIsLoading(false);
+  const syncProfileFromSession = useCallback(async (session: Session | null) => {
+    const requestId = ++profileRequest.current;
+
+    if (!session?.user) {
+      if (requestId === profileRequest.current) {
+        setUser(null);
+        setIsLoading(false);
+      }
       return;
     }
 
     try {
-      const supabase = getSupabase();
-      const {
-        data: { user: authUser },
-      } = await supabase.auth.getUser();
+      const profile = await fetchProfileById(getSupabase(), session.user.id);
+      if (requestId !== profileRequest.current) return;
 
-      if (!authUser) {
-        setUser(null);
-        setIsLoading(false);
-        return;
-      }
-
-      const profile = await fetchProfileById(supabase, authUser.id);
       if (!profile || !profile.isActive) {
-        await supabase.auth.signOut();
+        await getSupabase().auth.signOut();
         setUser(null);
         setIsLoading(false);
         return;
@@ -72,83 +75,138 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(profile);
       setIsLoading(false);
     } catch {
-      setUser(null);
-      setIsLoading(false);
+      if (requestId === profileRequest.current) {
+        setUser(null);
+        setIsLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    void loadProfile();
-    if (!isSupabaseConfigured()) return;
+    if (!isSupabaseConfigured()) {
+      setUser(null);
+      setIsLoading(false);
+      return;
+    }
 
     const supabase = getSupabase();
+    let mounted = true;
+
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+      void syncProfileFromSession(session);
+    });
+
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        setUser(null);
-        setIsLoading(false);
-        return;
-      }
-      void loadProfile();
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      // Evita deadlock de auth-js en RN al tocar storage dentro del callback.
+      setTimeout(() => {
+        if (!mounted) return;
+
+        if (event === "SIGNED_OUT") {
+          void syncProfileFromSession(null);
+          return;
+        }
+
+        // No borrar usuario en eventos nulos espurios (causa el “doble login”).
+        if (!session) return;
+
+        void syncProfileFromSession(session);
+      }, 0);
     });
+
+    const onAppState = (state: AppStateStatus) => {
+      if (state === "active") {
+        void supabase.auth.startAutoRefresh();
+        void supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session) void syncProfileFromSession(session);
+        });
+      } else {
+        void supabase.auth.stopAutoRefresh();
+      }
+    };
+    const appSub = AppState.addEventListener("change", onAppState);
 
     const unsubscribeLinks = subscribeAuthDeepLinks((url) => {
       if (!isAuthCallbackUrl(url)) return;
+      if (oauthInFlight.current) return;
       void (async () => {
         try {
-          await createSessionFromUrl(url);
-          const result = await resolveProfileAfterAuth();
-          if (result.ok) setUser(result.profile);
-          else setUser(null);
+          const session = await createSessionFromUrl(url);
+          if (session) await syncProfileFromSession(session);
         } catch {
-          // ignore malformed deep links
+          // ignore
         }
       })();
     });
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
+      appSub.remove();
       unsubscribeLinks();
     };
-  }, [loadProfile]);
+  }, [syncProfileFromSession]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    if (!isSupabaseConfigured()) {
-      return { ok: false, error: "Falta configurar la conexión con el servidor." };
-    }
-
-    try {
-      const supabase = getSupabase();
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
-      if (error) {
-        return { ok: false, error: "Correo o contraseña incorrectos." };
+  const login = useCallback(
+    async (email: string, password: string) => {
+      if (!isSupabaseConfigured()) {
+        return {
+          ok: false,
+          error: "Falta configurar la conexión con el servidor.",
+        };
       }
 
-      const result = await resolveProfileAfterAuth();
-      if (!result.ok) return result;
-      setUser(result.profile);
-      return { ok: true };
-    } catch (e) {
-      return {
-        ok: false,
-        error: e instanceof Error ? e.message : "No se pudo iniciar sesión.",
-      };
-    }
-  }, []);
+      try {
+        const supabase = getSupabase();
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email.trim().toLowerCase(),
+          password: password.trim(),
+        });
+        if (error || !data.session?.user) {
+          const detail = error?.message?.trim();
+          return {
+            ok: false,
+            error:
+              detail && detail.toLowerCase() !== "invalid login credentials"
+                ? detail
+                : "Correo o contraseña incorrectos.",
+          };
+        }
+
+        const result = await resolveProfileAfterAuth(data.session.user.id);
+        if (!result.ok) return result;
+
+        setUser(result.profile);
+        setIsLoading(false);
+        return { ok: true };
+      } catch (e) {
+        return {
+          ok: false,
+          error: e instanceof Error ? e.message : "No se pudo iniciar sesión.",
+        };
+      }
+    },
+    [],
+  );
 
   const finishOAuth = useCallback(
     async (provider: "google" | "azure") => {
       if (!isSupabaseConfigured()) {
-        return { ok: false, error: "Falta configurar la conexión con el servidor." };
+        return {
+          ok: false,
+          error: "Falta configurar la conexión con el servidor.",
+        };
       }
+      oauthInFlight.current = true;
       try {
         const result = await signInWithOAuthProvider(provider);
         if (!result.ok) return { ok: false, error: result.error };
-        if (result.profile) setUser(result.profile);
+        if (result.profile) {
+          setUser(result.profile);
+          setIsLoading(false);
+        }
         return { ok: true };
       } catch (e) {
         return {
@@ -160,6 +218,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 ? "No se pudo conectar con Google."
                 : "No se pudo conectar con Microsoft.",
         };
+      } finally {
+        oauthInFlight.current = false;
       }
     },
     [],
@@ -184,6 +244,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     setUser(null);
+    setIsLoading(false);
   }, []);
 
   const permissions = useMemo(

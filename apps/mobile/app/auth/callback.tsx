@@ -24,8 +24,8 @@ export default function AuthCallbackScreen() {
     async function handle(url: string | null) {
       if (!url || !isAuthCallbackUrl(url)) return;
       try {
-        await createSessionFromUrl(url);
-        const result = await resolveProfileAfterAuth();
+        const session = await createSessionFromUrl(url);
+        const result = await resolveProfileAfterAuth(session?.user?.id);
         if (cancelled) return;
         if (result.ok) {
           router.replace("/(app)");
@@ -37,7 +37,7 @@ export default function AuthCallbackScreen() {
       }
     }
 
-    void Linking.getInitialURL().then(handle);
+    // Solo URLs en caliente; getInitialURL puede reabrir un code viejo y forzar 2º login.
     const sub = Linking.addEventListener("url", ({ url }) => {
       void handle(url);
     });

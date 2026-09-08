@@ -2,13 +2,16 @@ import * as Linking from "expo-linking";
 import * as QueryParams from "expo-auth-session/build/QueryParams";
 import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
-import type { Provider } from "@supabase/supabase-js";
+import type { Provider, Session } from "@supabase/supabase-js";
 import { getAuthRedirectOrigin } from "@/supabase/config";
 import { getSupabase } from "@/supabase/client";
 import { fetchProfileById } from "@/supabase/profile";
 import type { UserProfile } from "@anasac/shared";
 
 WebBrowser.maybeCompleteAuthSession();
+
+/** Evita canjear el mismo `code` dos veces (deep link + AuthSession). */
+const exchangedCodes = new Map<string, Promise<Session | null>>();
 
 /** Deep link nativo (App Store) o Expo Go. */
 export function getNativeAppRedirect() {
@@ -29,7 +32,7 @@ export function getOAuthRedirectTo() {
   return `${origin}/auth/mobile-callback?app_redirect=${appRedirect}`;
 }
 
-export async function createSessionFromUrl(url: string) {
+export async function createSessionFromUrl(url: string): Promise<Session | null> {
   const { params, errorCode } = QueryParams.getQueryParams(url);
   if (errorCode) {
     throw new Error(errorCode);
@@ -43,11 +46,29 @@ export async function createSessionFromUrl(url: string) {
   const supabase = getSupabase();
 
   if (params.code) {
-    const { data, error } = await supabase.auth.exchangeCodeForSession(
-      params.code,
-    );
-    if (error) throw error;
-    return data.session;
+    const code = params.code;
+    const existing = exchangedCodes.get(code);
+    if (existing) return existing;
+
+    const exchange = (async () => {
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      if (!error && data.session) return data.session;
+
+      // Si otro listener ya canjeó el code, la sesión igual puede estar lista.
+      const { data: current } = await supabase.auth.getSession();
+      if (current.session) return current.session;
+
+      if (error) throw error;
+      return null;
+    })();
+
+    exchangedCodes.set(code, exchange);
+    try {
+      return await exchange;
+    } catch (e) {
+      exchangedCodes.delete(code);
+      throw e;
+    }
   }
 
   const access_token = params.access_token;
@@ -64,20 +85,33 @@ export async function createSessionFromUrl(url: string) {
   return data.session;
 }
 
-export async function resolveProfileAfterAuth(): Promise<
+export async function resolveProfileAfterAuth(
+  userId?: string,
+): Promise<
   | { ok: true; profile: UserProfile }
   | { ok: false; error: string }
 > {
   const supabase = getSupabase();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
 
-  if (!authUser) {
+  let id = userId;
+  if (!id) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    id = session?.user?.id;
+  }
+  if (!id) {
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+    id = authUser?.id;
+  }
+
+  if (!id) {
     return { ok: false, error: "No se pudo iniciar sesión." };
   }
 
-  const profile = await fetchProfileById(supabase, authUser.id);
+  const profile = await fetchProfileById(supabase, id);
   if (!profile) {
     await supabase.auth.signOut();
     return {
@@ -98,7 +132,6 @@ export async function signInWithOAuthProvider(
 ): Promise<{ ok: boolean; error?: string; profile?: UserProfile }> {
   const supabase = getSupabase();
   const redirectTo = getOAuthRedirectTo();
-  const httpsReturn = `${getAuthRedirectOrigin()}/auth/mobile-callback`;
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
@@ -129,20 +162,60 @@ export async function signInWithOAuthProvider(
     };
   }
 
-  // Cierra al llegar al callback HTTPS (prod). También acepta deep link.
-  const result = await WebBrowser.openAuthSessionAsync(data.url, httpsReturn, {
-    preferEphemeralSession: false,
-    showInRecents: true,
-  });
+  // Expo Go / Simulator: Safari. Producción: sesión nativa.
+  const useSystemBrowser =
+    Constants.appOwnership === "expo" || __DEV__;
 
-  if (result.type !== "success" || !("url" in result) || !result.url) {
-    // A veces iOS cierra con deep link y type dismiss; la sesión puede llegar por Linking.
-    return { ok: false, error: "Inicio de sesión cancelado." };
+  const deepLinkPromise = waitForAuthCallbackUrl(useSystemBrowser ? 120_000 : 45_000);
+
+  let callbackUrl: string | null = null;
+
+  if (useSystemBrowser) {
+    await WebBrowser.openBrowserAsync(data.url, {
+      showInRecents: true,
+      enableBarCollapsing: false,
+      createTask: false,
+    });
+    callbackUrl = await deepLinkPromise;
+    try {
+      WebBrowser.dismissBrowser();
+    } catch {
+      // ignore
+    }
+  } else {
+    // Cerrar cuando vuelve el deep link nativo (más fiable en iOS que solo HTTPS).
+    const nativeReturn = getNativeAppRedirect();
+    const result = await WebBrowser.openAuthSessionAsync(data.url, nativeReturn, {
+      preferEphemeralSession: false,
+      showInRecents: true,
+    });
+    if (result.type === "success" && "url" in result && result.url) {
+      callbackUrl = result.url;
+    } else {
+      callbackUrl = await deepLinkPromise;
+    }
+  }
+
+  if (!callbackUrl) {
+    // Sesión pudo llegar por el listener global antes de este return.
+    const recovered = await resolveProfileAfterAuth();
+    if (recovered.ok) return { ok: true, profile: recovered.profile };
+    return {
+      ok: false,
+      error: useSystemBrowser
+        ? "No se completó el inicio de sesión. Cerrá Safari y reintentá."
+        : "Inicio de sesión cancelado.",
+    };
   }
 
   try {
-    await createSessionFromUrl(result.url);
+    const session = await createSessionFromUrl(callbackUrl);
+    const result = await resolveProfileAfterAuth(session?.user?.id);
+    if (!result.ok) return result;
+    return { ok: true, profile: result.profile };
   } catch (e) {
+    const recovered = await resolveProfileAfterAuth();
+    if (recovered.ok) return { ok: true, profile: recovered.profile };
     return {
       ok: false,
       error:
@@ -151,17 +224,30 @@ export async function signInWithOAuthProvider(
           : "No se pudo completar el inicio de sesión.",
     };
   }
+}
 
-  return resolveProfileAfterAuth();
+function waitForAuthCallbackUrl(timeoutMs: number): Promise<string | null> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (url: string | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      subscription.remove();
+      resolve(url);
+    };
+
+    const timer = setTimeout(() => finish(null), timeoutMs);
+    const subscription = Linking.addEventListener("url", ({ url }) => {
+      if (isAuthCallbackUrl(url)) finish(url);
+    });
+  });
 }
 
 export function subscribeAuthDeepLinks(
   onUrl: (url: string) => void,
 ): () => void {
   const sub = Linking.addEventListener("url", ({ url }) => onUrl(url));
-  void Linking.getInitialURL().then((url) => {
-    if (url) onUrl(url);
-  });
   return () => sub.remove();
 }
 
