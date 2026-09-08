@@ -9,9 +9,13 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anasaccr.dashboard"
+      "bundleIdentifier": "com.anasaccr.dashboard",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "label": "ANASAC",
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
@@ -38,6 +42,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "0c54cf68-abff-41e1-9841-0ef5d253e889"
+      }
     }
   }
 }
